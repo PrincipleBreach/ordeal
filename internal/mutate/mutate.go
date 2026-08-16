@@ -74,12 +74,13 @@ func Classify(field string) FieldClass {
 
 // Variant is one mutated event plus the provenance of the change.
 type Variant struct {
-	Mutator string       // mutator name, e.g. "flag-abbreviation"
-	Field   string       // the field whose value was mutated
-	Before  string       // original field value
-	After   string       // mutated field value
-	Note    string       // human explanation of the technique
-	Event   engine.Event // full event copy with the single field replaced
+	Mutator     string       // mutator name, e.g. "flag-abbreviation"
+	Field       string       // the field whose value was mutated
+	Before      string       // original field value
+	After       string       // mutated field value
+	Note        string       // human explanation of the technique
+	Remediation string       // how to harden a rule against this evasion
+	Event       engine.Event // full event copy with the single field replaced
 }
 
 // Mutator transforms a single command-string value into zero or more evasions.
@@ -91,6 +92,9 @@ type Mutator interface {
 	Technique() string
 	// Describe is a one-line explanation of the transform.
 	Describe() string
+	// Remediation is the one-line blue-team fix: how to harden a Sigma rule so
+	// it catches this evasion. Printed next to a finding.
+	Remediation() string
 	// Apply returns mutated forms of value, each with a short note.
 	Apply(value string) []Result
 }
@@ -101,9 +105,18 @@ type Result struct {
 	Note  string
 }
 
-// Catalog is the default, ordered set of mutators.
-func Catalog() []Mutator {
-	return []Mutator{
+// registry holds every mutator, populated by register() in package init. New
+// mutators self-register from their own file, so adding one never touches this
+// file or Catalog.
+var registry []Mutator
+
+// register adds mutators to the catalog. Call it from an init() function.
+func register(mutators ...Mutator) {
+	registry = append(registry, mutators...)
+}
+
+func init() {
+	register(
 		flagAbbreviation{},
 		windashSubstitution{},
 		caretInsertion{},
@@ -114,7 +127,15 @@ func Catalog() []Mutator {
 		trailingDot{},
 		whitespacePadding{},
 		caseFlip{},
-	}
+	)
+}
+
+// Catalog returns every registered mutator, ordered by name for determinism.
+func Catalog() []Mutator {
+	out := make([]Mutator, len(registry))
+	copy(out, registry)
+	sort.Slice(out, func(i, j int) bool { return out[i].Name() < out[j].Name() })
+	return out
 }
 
 // Options selects a subset of the catalog by mutator name.
@@ -174,12 +195,13 @@ func GenerateWith(mutators []Mutator, base engine.Event, fields []string) []Vari
 					continue // no-op mutation
 				}
 				out = append(out, Variant{
-					Mutator: m.Name(),
-					Field:   field,
-					Before:  value,
-					After:   r.Value,
-					Note:    r.Note,
-					Event:   withField(base, field, r.Value),
+					Mutator:     m.Name(),
+					Field:       field,
+					Before:      value,
+					After:       r.Value,
+					Note:        r.Note,
+					Remediation: m.Remediation(),
+					Event:       withField(base, field, r.Value),
 				})
 			}
 		}
@@ -274,6 +296,9 @@ func (flagAbbreviation) Technique() string { return "T1059.001" }
 func (flagAbbreviation) Describe() string {
 	return "Shorten PowerShell/cmd flags to an accepted prefix (-EncodedCommand -> -enc)"
 }
+func (flagAbbreviation) Remediation() string {
+	return "Match abbreviated forms too, e.g. a regex like -e(n(c(o...)?)?)? or key on a stable prefix."
+}
 
 var flagAbbrevMap = map[string]string{
 	"-encodedcommand":  "-enc",
@@ -319,6 +344,9 @@ func (windashSubstitution) Technique() string { return "Sigma windash" }
 func (windashSubstitution) Describe() string {
 	return "Swap the - flag prefix for an accepted alternative (/, en-dash, em-dash)"
 }
+func (windashSubstitution) Remediation() string {
+	return "Use the |windash modifier, or a regex character class such as [-/] on the flag prefix."
+}
 
 var flagToken = regexp.MustCompile(`(^|\s)-([A-Za-z])`)
 
@@ -348,6 +376,9 @@ func (caretInsertion) Technique() string { return "T1027" }
 func (caretInsertion) Describe() string {
 	return "Insert cmd.exe caret escapes into the command token (whoami -> who^ami)"
 }
+func (caretInsertion) Remediation() string {
+	return "Carets survive in the logged command line; key on the Image field or strip ^ before matching."
+}
 
 func (caretInsertion) Apply(value string) []Result {
 	head, rest := commandToken(value)
@@ -370,6 +401,9 @@ func (powershellTick) Name() string      { return "powershell-tick" }
 func (powershellTick) Technique() string { return "T1059.001" }
 func (powershellTick) Describe() string {
 	return "Insert PowerShell backtick escapes into the command token (iex -> i`ex)"
+}
+func (powershellTick) Remediation() string {
+	return "Backticks survive in the command line; key on Image/ParentImage or strip ` before matching."
 }
 
 func (powershellTick) Apply(value string) []Result {
@@ -394,6 +428,9 @@ func (quoteInsertion) Technique() string { return "T1027" }
 func (quoteInsertion) Describe() string {
 	return `Insert empty quote pairs into the command token (powershell -> pow""ershell)`
 }
+func (quoteInsertion) Remediation() string {
+	return "Quotes survive in the command line; key on the Image field or strip quotes before matching."
+}
 
 func (quoteInsertion) Apply(value string) []Result {
 	head, rest := commandToken(value)
@@ -417,6 +454,9 @@ func (envIndirection) Name() string      { return "env-indirection" }
 func (envIndirection) Technique() string { return "T1027" }
 func (envIndirection) Describe() string {
 	return "Replace an absolute path prefix with an environment variable (C:\\Windows -> %SystemRoot%)"
+}
+func (envIndirection) Remediation() string {
+	return "Also match the %SystemRoot%/%ProgramFiles% forms, or key on the resolved Image field."
 }
 
 var envPrefixes = []struct{ literal, envvar string }{
@@ -450,6 +490,9 @@ func (forwardSlashPath) Technique() string { return "T1027" }
 func (forwardSlashPath) Describe() string {
 	return "Flip \\ path separators to / (C:\\Windows -> C:/Windows)"
 }
+func (forwardSlashPath) Remediation() string {
+	return "Match both separators with a regex like [\\\\/], or key on the normalized Image field."
+}
 
 func (forwardSlashPath) Apply(value string) []Result {
 	if !strings.Contains(value, `\`) {
@@ -468,6 +511,9 @@ func (trailingDot) Name() string      { return "trailing-dot" }
 func (trailingDot) Technique() string { return "T1036" }
 func (trailingDot) Describe() string {
 	return "Append a trailing dot to an executable name (certutil.exe -> certutil.exe.)"
+}
+func (trailingDot) Remediation() string {
+	return "Match on the executable stem with |contains rather than an exact |endswith boundary, or use Image."
 }
 
 var exeName = regexp.MustCompile(`(?i)([A-Za-z0-9_]+\.exe)`)
@@ -493,6 +539,9 @@ func (whitespacePadding) Technique() string { return "T1027" }
 func (whitespacePadding) Describe() string {
 	return "Expand single spaces into runs (arg1 arg2 -> arg1   arg2)"
 }
+func (whitespacePadding) Remediation() string {
+	return "Match individual tokens with separate |contains terms rather than a fixed single-space sequence."
+}
 
 func (whitespacePadding) Apply(value string) []Result {
 	if !strings.Contains(value, " ") {
@@ -514,6 +563,9 @@ func (caseFlip) Name() string      { return "case-flip" }
 func (caseFlip) Technique() string { return "backend case-sensitivity" }
 func (caseFlip) Describe() string {
 	return "Invert letter case of non-payload tokens (powershell -> POWERSHELL)"
+}
+func (caseFlip) Remediation() string {
+	return "Ensure the backend comparison is case-insensitive (Sigma's default) or lowercase the field first."
 }
 
 func (caseFlip) Apply(value string) []Result {

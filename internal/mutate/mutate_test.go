@@ -138,7 +138,7 @@ func TestSelectOnlyAndSkip(t *testing.T) {
 func TestEveryMutatorHasMetadata(t *testing.T) {
 	seen := map[string]bool{}
 	for _, m := range Catalog() {
-		if m.Name() == "" || m.Technique() == "" || m.Describe() == "" {
+		if m.Name() == "" || m.Technique() == "" || m.Describe() == "" || m.Remediation() == "" {
 			t.Errorf("mutator %T missing metadata", m)
 		}
 		if seen[m.Name()] {

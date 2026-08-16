@@ -106,10 +106,19 @@ func mutationsHuman(w io.Writer, r runner.MutationReport) error {
 			continue
 		}
 		fmt.Fprintf(w, "%s  %s\n", styleFail.Render("BREACH"), head)
+		seenFix := map[string]bool{}
+		var fixes []string
 		for _, e := range res.Evaded {
 			fmt.Fprintf(w, "        %s %s\n",
 				styleEvaded.Render("▲ "+e.Mutator), styleDim.Render("· "+e.Field+" · "+e.Note))
 			fmt.Fprintf(w, "          %s\n", styleDim.Render(e.After))
+			if e.Remediation != "" && !seenFix[e.Remediation] {
+				seenFix[e.Remediation] = true
+				fixes = append(fixes, e.Remediation)
+			}
+		}
+		for _, fix := range fixes {
+			fmt.Fprintf(w, "        %s %s\n", styleWarn.Render("fix"), styleDim.Render("· "+fix))
 		}
 	}
 	fmt.Fprintln(w)

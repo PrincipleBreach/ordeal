@@ -152,11 +152,12 @@ func (rn *Runner) assertDataset(ctx context.Context, s *testcase.Suite, m engine
 
 // Evasion is a single mutation that stopped the rule from firing.
 type Evasion struct {
-	Mutator string `json:"mutator"`
-	Field   string `json:"field"`
-	Before  string `json:"before"`
-	After   string `json:"after"`
-	Note    string `json:"note"`
+	Mutator     string `json:"mutator"`
+	Field       string `json:"field"`
+	Before      string `json:"before"`
+	After       string `json:"after"`
+	Note        string `json:"note"`
+	Remediation string `json:"remediation"`
 }
 
 // Resilience records how one positive case held up under mutation.
@@ -246,11 +247,12 @@ func (rn *Runner) mutateCase(ctx context.Context, m engine.Matcher, s *testcase.
 			continue
 		}
 		res.Evaded = append(res.Evaded, Evasion{
-			Mutator: variant.Mutator,
-			Field:   variant.Field,
-			Before:  variant.Before,
-			After:   variant.After,
-			Note:    variant.Note,
+			Mutator:     variant.Mutator,
+			Field:       variant.Field,
+			Before:      variant.Before,
+			After:       variant.After,
+			Note:        variant.Note,
+			Remediation: variant.Remediation,
 		})
 	}
 	sort.Slice(res.Evaded, func(i, j int) bool {
