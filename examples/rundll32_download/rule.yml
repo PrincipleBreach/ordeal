@@ -1,0 +1,28 @@
+title: Rundll32 Remote Code Execution
+id: 7c4a9d61-3f28-4b0e-9a15-6d8e2f3b71c4
+status: test
+description: >
+  Detects rundll32.exe used as a proxy for remote code, either through the
+  javascript: protocol handler, the url.dll,OpenURL export, or a plain URL on
+  the command line.
+references:
+  - https://attack.mitre.org/techniques/T1218/011/
+author: Principle Breach
+tags:
+  - attack.defense_evasion
+  - attack.t1218.011
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_img:
+    Image|endswith: '\rundll32.exe'
+  selection_remote:
+    CommandLine|contains:
+      - 'javascript:'
+      - 'url.dll,OpenURL'
+      - 'http'
+  condition: selection_img and selection_remote
+falsepositives:
+  - Installers that pass a documentation URL to url.dll
+level: high

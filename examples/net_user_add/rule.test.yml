@@ -1,0 +1,28 @@
+rule: rule.yml
+
+cases:
+  - name: net user add fires
+    event:
+      Image: 'C:\Windows\System32\net.exe'
+      CommandLine: 'net.exe user svc_backup Summer2026! /add /domain'
+    match: true
+    selections:
+      - selection_img
+      - selection_user
+      - selection_add
+
+  - name: net1 localgroup administrators add fires
+    event:
+      Image: 'C:\Windows\System32\net1.exe'
+      CommandLine: 'net1.exe localgroup administrators svc_backup /add'
+    match: true
+    selections:
+      - selection_img
+      - selection_group
+      - selection_add
+
+  - name: net user enumeration is benign
+    event:
+      Image: 'C:\Windows\System32\net.exe'
+      CommandLine: 'net.exe user svc_backup /domain'
+    match: false

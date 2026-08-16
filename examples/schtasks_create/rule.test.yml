@@ -1,0 +1,24 @@
+rule: rule.yml
+
+cases:
+  - name: schtasks masquerading update task fires
+    event:
+      Image: 'C:\Windows\System32\schtasks.exe'
+      CommandLine: 'schtasks.exe /create /tn "GoogleUpdateTaskMachineUA" /tr "cmd.exe /c powershell.exe -NoProfile -WindowStyle hidden -EncodedCommand SQBFAFgA" /sc minute /mo 5 /ru system /f'
+    match: true
+    selections:
+      - selection_img
+      - selection_create
+      - selection_payload
+
+  - name: schtasks onlogon task from public directory fires
+    event:
+      Image: 'C:\Windows\System32\schtasks.exe'
+      CommandLine: 'schtasks.exe /create /tn OneDriveSync /tr "C:\Users\Public\svchost.exe" /sc onlogon /ru system /f'
+    match: true
+
+  - name: schtasks listing tasks is benign
+    event:
+      Image: 'C:\Windows\System32\schtasks.exe'
+      CommandLine: 'schtasks.exe /query /fo LIST /v'
+    match: false

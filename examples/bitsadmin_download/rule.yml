@@ -1,0 +1,30 @@
+title: Bitsadmin Transfer Job Ingress
+id: 4a83f2d9-71e6-4c05-9b3a-8e02d5c1f7b6
+status: test
+description: >
+  Detects bitsadmin.exe creating a background transfer job, a durable
+  living-off-the-land download that survives reboots and runs under the BITS
+  service rather than the calling process.
+references:
+  - https://attack.mitre.org/techniques/T1197/
+author: Principle Breach
+tags:
+  - attack.defense_evasion
+  - attack.persistence
+  - attack.t1197
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_img:
+    Image|endswith: '\bitsadmin.exe'
+  selection_transfer:
+    CommandLine|contains:
+      - '/transfer'
+      - '/addfile'
+      - '-transfer'
+      - '-addfile'
+  condition: selection_img and selection_transfer
+falsepositives:
+  - Software distribution tooling that scripts BITS jobs
+level: medium

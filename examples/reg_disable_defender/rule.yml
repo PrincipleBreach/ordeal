@@ -1,0 +1,33 @@
+title: Windows Defender Disabled Via Registry
+id: 8c60a4e2-1b7d-4f39-a5c8-90fe3b26d174
+status: test
+description: >
+  Detects reg.exe writing a Windows Defender policy value that turns off
+  antimalware protection, real-time monitoring, behaviour monitoring, or tamper
+  protection.
+references:
+  - https://attack.mitre.org/techniques/T1562/001/
+author: Principle Breach
+tags:
+  - attack.defense_evasion
+  - attack.t1562.001
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_img:
+    Image|endswith: '\reg.exe'
+  selection_add:
+    CommandLine|contains: ' add '
+  selection_key:
+    CommandLine|contains: '\Microsoft\Windows Defender'
+  selection_value:
+    CommandLine|contains:
+      - 'DisableAntiSpyware'
+      - 'DisableRealtimeMonitoring'
+      - 'DisableBehaviorMonitoring'
+      - 'TamperProtection'
+  condition: selection_img and selection_add and selection_key and selection_value
+falsepositives:
+  - Endpoint migrations that intentionally decommission Defender
+level: critical

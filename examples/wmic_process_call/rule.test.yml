@@ -1,0 +1,23 @@
+rule: rule.yml
+
+cases:
+  - name: wmic remote node process call create fires
+    event:
+      Image: 'C:\Windows\System32\wbem\wmic.exe'
+      CommandLine: 'wmic.exe /node:"WORKSTATION07" process call create "cmd.exe /c powershell.exe -NoProfile -WindowStyle hidden -EncodedCommand SQBFAFgA"'
+    match: true
+    selections:
+      - selection_img
+      - selection_call
+
+  - name: wmic local process call create fires
+    event:
+      Image: 'C:\Windows\System32\wbem\wmic.exe'
+      CommandLine: 'wmic.exe process call create "C:\Users\Public\update.exe"'
+    match: true
+
+  - name: wmic inventory query is benign
+    event:
+      Image: 'C:\Windows\System32\wbem\wmic.exe'
+      CommandLine: 'wmic.exe process where name="chrome.exe" get processid,commandline'
+    match: false

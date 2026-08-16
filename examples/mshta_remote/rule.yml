@@ -1,0 +1,28 @@
+title: Mshta Remote Or Inline Script Execution
+id: 9d1c6b74-5a02-4e38-bb91-4f7d2c08e6a3
+status: test
+description: >
+  Detects mshta.exe executing a remotely hosted HTA or an inline vbscript: /
+  javascript: payload passed directly on the command line.
+references:
+  - https://attack.mitre.org/techniques/T1218/005/
+author: Principle Breach
+tags:
+  - attack.defense_evasion
+  - attack.t1218.005
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_img:
+    Image|endswith: '\mshta.exe'
+  selection_payload:
+    CommandLine|contains:
+      - 'http://'
+      - 'https://'
+      - 'vbscript:'
+      - 'javascript:'
+  condition: selection_img and selection_payload
+falsepositives:
+  - Intranet applications distributed as hosted HTA files
+level: high

@@ -1,0 +1,25 @@
+rule: rule.yml
+
+cases:
+  - name: reg add DisableAntiSpyware fires
+    event:
+      Image: 'C:\Windows\System32\reg.exe'
+      CommandLine: 'reg.exe add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableAntiSpyware /t REG_DWORD /d 1 /f'
+    match: true
+    selections:
+      - selection_img
+      - selection_add
+      - selection_key
+      - selection_value
+
+  - name: reg add DisableRealtimeMonitoring fires
+    event:
+      Image: 'C:\Windows\System32\reg.exe'
+      CommandLine: 'reg.exe add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v DisableRealtimeMonitoring /t REG_DWORD /d 1 /f'
+    match: true
+
+  - name: reg query of defender status is benign
+    event:
+      Image: 'C:\Windows\System32\reg.exe'
+      CommandLine: 'reg.exe query "HKLM\SOFTWARE\Microsoft\Windows Defender" /v ProductStatus'
+    match: false

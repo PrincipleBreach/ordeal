@@ -1,0 +1,33 @@
+title: Local Account Created Or Added To Privileged Group
+id: 5f2b90c7-4e63-4a18-b0d5-72c9e1846fab
+status: test
+description: >
+  Detects net.exe or its net1.exe helper creating a new account or adding an
+  account to a local group, the usual way an operator establishes a durable
+  backdoor identity after gaining administrative access.
+references:
+  - https://attack.mitre.org/techniques/T1136/001/
+author: Principle Breach
+tags:
+  - attack.persistence
+  - attack.t1136.001
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_img:
+    Image|endswith:
+      - '\net.exe'
+      - '\net1.exe'
+  selection_user:
+    CommandLine|contains: ' user '
+  selection_group:
+    CommandLine|contains: ' localgroup '
+  selection_add:
+    CommandLine|contains:
+      - '/add'
+      - '-add'
+  condition: selection_img and (selection_user or selection_group) and selection_add
+falsepositives:
+  - Provisioning scripts that create service accounts
+level: medium
