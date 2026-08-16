@@ -27,6 +27,10 @@ type Suite struct {
 	// Mutate, when false, opts this suite out of adversarial mutation testing.
 	// Defaults to true.
 	Mutate *bool `yaml:"mutate"`
+	// Placeholders defines values for %name% placeholders used by the rule's
+	// |expand modifier or bare placeholders. Required to evaluate such rules,
+	// since placeholder values are deployment-specific.
+	Placeholders map[string][]string `yaml:"placeholders"`
 
 	// Path is the on-disk location of this suite, set by the loader.
 	Path string `yaml:"-"`

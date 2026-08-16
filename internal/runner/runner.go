@@ -286,5 +286,12 @@ func (rn *Runner) compile(s *testcase.Suite) (engine.Matcher, error) {
 		}
 		configs = append(configs, cfg)
 	}
-	return rn.Engine.Compile(rule, configs...)
+	opts := []engine.Option{}
+	if len(configs) > 0 {
+		opts = append(opts, engine.WithConfigs(configs...))
+	}
+	if len(s.Placeholders) > 0 {
+		opts = append(opts, engine.WithPlaceholders(s.Placeholders))
+	}
+	return rn.Engine.Compile(rule, opts...)
 }

@@ -40,7 +40,26 @@ type Matcher interface {
 // Engine compiles Sigma rules into Matchers.
 type Engine interface {
 	Name() string
-	Compile(rule sigma.Rule, configs ...sigma.Config) (Matcher, error)
+	Compile(rule sigma.Rule, opts ...Option) (Matcher, error)
+}
+
+// Option configures a single Compile call.
+type Option func(*compileOptions)
+
+type compileOptions struct {
+	configs      []sigma.Config
+	placeholders map[string][]string
+}
+
+// WithConfigs applies sigma-go field-mapping configs to the compiled rule.
+func WithConfigs(configs ...sigma.Config) Option {
+	return func(o *compileOptions) { o.configs = append(o.configs, configs...) }
+}
+
+// WithPlaceholders supplies definitions for %placeholder% values, enabling the
+// |expand modifier and bare placeholder matching.
+func WithPlaceholders(m map[string][]string) Option {
+	return func(o *compileOptions) { o.placeholders = m }
 }
 
 // Native is the built-in engine, backed by bradleyjkemp/sigma-go.
@@ -53,20 +72,27 @@ func NewNative() Native { return Native{} }
 func (Native) Name() string { return "native/sigma-go" }
 
 // Compile prepares a rule for repeated evaluation.
-func (Native) Compile(rule sigma.Rule, configs ...sigma.Config) (Matcher, error) {
+func (Native) Compile(rule sigma.Rule, opts ...Option) (Matcher, error) {
 	if rule.Title == "" && rule.ID == "" {
 		return nil, fmt.Errorf("engine: rule is missing both title and id")
 	}
-	opts := make([]evaluator.Option, 0, 1)
-	if len(configs) > 0 {
-		opts = append(opts, evaluator.WithConfig(configs...))
+	var o compileOptions
+	for _, f := range opts {
+		f(&o)
 	}
-	// Close the `Field: null` gap before evaluation (see rewriteNulls). windash
-	// is handled by the modifier registered in this package's init.
-	rule = rewriteNulls(rule)
+	evalOpts := make([]evaluator.Option, 0, 2)
+	if len(o.configs) > 0 {
+		evalOpts = append(evalOpts, evaluator.WithConfig(o.configs...))
+	}
+	if len(o.placeholders) > 0 {
+		evalOpts = append(evalOpts, evaluator.WithPlaceholderExpander(placeholderExpander(o.placeholders)))
+	}
+	// Rewrite null / base64offset / wide / re-flag values before evaluation;
+	// windash and expand are handled by the modifiers registered in init.
+	rule = normalizeRule(rule)
 	return &nativeMatcher{
 		title: rule.Title,
-		eval:  evaluator.ForRule(rule, opts...),
+		eval:  evaluator.ForRule(rule, evalOpts...),
 	}, nil
 }
 
