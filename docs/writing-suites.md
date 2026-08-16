@@ -223,6 +223,8 @@ detection gap there is, and it does not show up in a passing test report.
   central test directory.
 - **Every rule gets a negative case.** Positive-only suites pass forever and prove
   nothing about precision.
+- **Every rule gets an inline positive case.** Mutation skips `dataset:` cases, so
+  a rule tested only against captured telemetry is never attacked.
 - **Fixtures come from real telemetry.** Paste the command line from the log, then
   strip the identifying detail.
 - **Mutate before you merge.** A rule reviewed, converted, and merged green can

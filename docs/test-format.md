@@ -184,14 +184,24 @@ from a lab detonation, a replayed incident.
   object, or an object wrapping the records under `records`) and `.jsonl` /
   `.ndjson` (one JSON object per line, blank lines skipped).
 - **Every event must produce the expected verdict.** With `match: false`, no event
-  may fire; with `match: true`, all of them must. The case reports one result, and
-  a failure says how many of how many matched.
-- **An empty file is an error**, not a pass.
+  may fire; with `match: true`, all of them must. The case reports one result, not
+  one per event, and a failure says how many of how many matched:
+  `3/10 dataset events matched, expected match=true for all`.
+- **An empty file is an error**, not a pass. An all-blank `.jsonl` fails loudly
+  rather than reporting a vacuous green.
 - **Nested records are flattened** — EVTX-rendered `EventData` and winlogbeat
-  documents are reduced to the flat shape the engine matches on. Field names are
-  never renamed; that is what `config:` is for.
+  documents are reduced to the flat shape the engine matches on. A UTF-8 BOM is
+  tolerated. Field names are never renamed; that is what `config:` is for.
 - **Dataset cases are not mutated.** Mutation attacks a single known-good positive
   event; see [mutators.md](mutators.md).
+
+In `--format json`, read a dataset case's result from `pass` and `error`, not from
+`actual`. For a dataset case `actual` means *at least one event matched*, which is
+not the pass condition — the exact ratio is in `error`.
+
+Keep at least one inline positive `event:` case on every rule. A rule whose only
+positive case is a dataset gets zero adversarial coverage: `ordeal run` asserts it,
+and `ordeal mutate` skips it entirely.
 
 `event` and `dataset` are mutually exclusive, and one of them is required.
 

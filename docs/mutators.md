@@ -412,6 +412,11 @@ across commits, not against a different case.
 Only positive inline cases are scored. Negative cases have nothing to evade, and
 dataset cases cover many events rather than one known-good positive.
 
+That last point is a trap worth naming: a rule whose only positive case is a
+`dataset:` case is never attacked. It passes `ordeal run` and reports nothing at
+all under `ordeal mutate`. Give every rule at least one inline positive `event:`
+case, and use datasets for breadth on top of it.
+
 The catalog is a floor, not a ceiling. Surviving every mutator means the rule
 resists the documented techniques Ordeal knows about today; it does not mean the
 rule is unevadable. New mutators land through the process in
