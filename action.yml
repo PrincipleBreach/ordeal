@@ -1,0 +1,33 @@
+name: Ordeal
+description: Assert Sigma detection rules fire, then attack them with known evasions.
+branding:
+  icon: crosshair
+  color: red
+
+inputs:
+  paths:
+    description: Space-separated paths (files or directories) to scan for *.test.yml suites.
+    required: false
+    default: "."
+  mutate:
+    description: Run adversarial mutation and fail the job if any detection is evaded.
+    required: false
+    default: "false"
+  version:
+    description: Ordeal version to use (git ref or "latest").
+    required: false
+    default: "latest"
+
+runs:
+  using: composite
+  steps:
+    - name: Install ordeal
+      shell: bash
+      run: go install github.com/principlebreach/ordeal/cmd/ordeal@${{ inputs.version }}
+    - name: Run detection tests
+      shell: bash
+      run: ordeal run ${{ inputs.paths }} --format junit > ordeal-tests.xml || (cat ordeal-tests.xml; exit 1)
+    - name: Adversarial mutation
+      if: ${{ inputs.mutate == 'true' }}
+      shell: bash
+      run: ordeal mutate ${{ inputs.paths }}

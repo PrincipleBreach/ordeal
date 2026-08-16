@@ -1,0 +1,26 @@
+title: Certutil Download From URL
+id: 19b08b1c-861d-4e75-a1ef-ea0c1baf202b
+status: test
+description: >
+  Detects certutil.exe downloading a file from a remote URL, a common
+  living-off-the-land ingress technique.
+references:
+  - https://attack.mitre.org/techniques/T1105/
+author: Principle Breach
+tags:
+  - attack.command_and_control
+  - attack.t1105
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_img:
+    Image|endswith: '\certutil.exe'
+  selection_flags:
+    CommandLine|contains:
+      - '-urlcache'
+      - '-verifyctl'
+  condition: selection_img and selection_flags
+falsepositives:
+  - Legitimate certificate operations
+level: high

