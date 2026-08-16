@@ -1,0 +1,17 @@
+[
+  {
+    "Event": {
+      "System": {
+        "Provider": { "@Name": "Microsoft-Windows-Sysmon", "@Guid": "{5770385f-c22a-43e0-bf4c-06f5698ffbd9}" },
+        "EventID": { "#text": "1", "@Qualifiers": "" },
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Computer": "WORKSTATION-01"
+      },
+      "EventData": {
+        "Image": "C:\\Windows\\System32\\rundll32.exe",
+        "CommandLine": "rundll32.exe shell32.dll,Control_RunDLL",
+        "ParentImage": "C:\\Windows\\explorer.exe"
+      }
+    }
+  }
+]
