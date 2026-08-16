@@ -83,43 +83,43 @@ cases:
 
 Ordeal asks the attacker's question: what is the cheapest change that keeps the
 behaviour identical but stops the rule from firing? For every positive case that
-fires, it applies a catalog of semantics-preserving command-line evasions and
-reports each one that slips past.
+fires, it applies a catalog of **28 semantics-preserving evasions** and reports
+each one that slips past — with the fix.
 
-- `flag-abbreviation` — `-EncodedCommand` runs identically as `-enc`.
-- `windash` — `-flag` becomes `/flag`, en-dash, or em-dash.
-- `caret-insertion` — `whoami` becomes `who^ami`; cmd.exe strips the caret.
-- `powershell-tick` — `iex` becomes `` i`ex ``; PowerShell strips the backtick.
-- `quote-insertion` — `powershell` becomes `pow""ershell`.
-- `env-indirection` — `C:\Windows\System32` becomes `%SystemRoot%\System32`.
-- `forward-slash-path`, `trailing-dot`, `whitespace-padding`, `case-flip`.
+- **Command tokens** — caret and backtick insertion, empty quotes, case flips.
+- **Flags** — `flag-abbreviation` (`-EncodedCommand` → `-enc`), `windash` (`-flag` → `/flag` and every alternative dash).
+- **Paths** — separator doubling, `\.\` and `\..\` canonicalization, `.exe` omission, 8.3 short names.
+- **cmd.exe** — comma/semicolon token separators, `%VAR:~0%` indirection.
+- **Network** — IPv4 as decimal or hex, default ports, percent-encoding, URL path traversal.
+- **PowerShell** — cmdlet aliases, `System.` shortening, quoted member names, string concatenation, the `-f` format operator.
 
-Two rules keep findings honest. Ordeal mutates only attacker-controlled fields
-(`CommandLine`, not the kernel-resolved `Image`), and it never reshapes an opaque
-payload (a base64 blob is left byte-for-byte intact), because either would model
-an evasion that does not actually work. The full catalog, with the technique each
-mutator models, is in [docs/mutators.md](docs/mutators.md).
+Each finding prints its **remediation** — the Sigma change that catches the
+evasion. Two rules keep findings honest: Ordeal mutates only attacker-controlled
+fields (`CommandLine`, not the kernel-resolved `Image`), and never reshapes an
+opaque payload (a base64 blob stays byte-for-byte intact). Every mutator is mapped
+to a MITRE ATT&CK technique — see [docs/mutators.md](docs/mutators.md), or run
+`ordeal list mutators`.
 
 ## Example Output
 
 ```
 ordeal mutate ./examples/powershell_encoded
 
-BREACH  powershell encoded command fires  survives 7/11 evasions (64%)
+BREACH  powershell encoded command fires  survives 8/10 techniques (80%)
         ▲ flag-abbreviation · CommandLine · abbreviated -encodedcommand to -enc
           powershell.exe -NoProfile -enc SQBFAFgA
-        ▲ windash · CommandLine · replaced - flag prefix with forward slash
+        ▲ windash (10 variants) · CommandLine · replaced - flag prefix with forward slash
           powershell.exe /NoProfile /EncodedCommand SQBFAFgA
-        ▲ windash · CommandLine · replaced - flag prefix with en-dash
-          powershell.exe –NoProfile –EncodedCommand SQBFAFgA
-        ▲ windash · CommandLine · replaced - flag prefix with em-dash
-          powershell.exe —NoProfile —EncodedCommand SQBFAFgA
+        fix · Match abbreviated forms too, e.g. a regex like -e(n(c(o...)?)?)? or key on a stable prefix.
+        fix · Use the |windash modifier, or a regex character class such as [-/] on the flag prefix.
 
-EVADED  1 detections tested, 4 evasions found
+EVADED  1 detections tested, 2 techniques evaded
 ```
 
-The base64 payload is left untouched — only the surface changes. Exit `0` when
-nothing evades, `1` when a detection is breached, `2` on usage error.
+Scoring is per technique, not per variant, so a rule that misses windash (ten dash
+characters) counts as one gap, not ten. The base64 payload is left untouched.
+Each breach prints its `fix`. Exit `0` when nothing evades, `1` when a detection
+is breached, `2` on usage error.
 
 ## Why This Matters
 

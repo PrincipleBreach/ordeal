@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Expanded the mutation catalog from 10 to 28 evasions across command-token,
+  windash, path, cmd.exe, network/URL, and PowerShell families — each mapped to a
+  MITRE ATT&CK technique. Sourced from ArgFuscator, Invoke-Obfuscation, DOSfuscation,
+  and MITRE research; every transform is a deterministic, semantics-preserving
+  string rewrite.
+- Every mutator now carries a `Remediation()` — the blue-team fix — and
+  `ordeal mutate` prints it (deduped) under each breached rule, turning a finding
+  into an action.
+- Extended `windash` to the full alternative-dash set the Windows parser folds to
+  `-` (fraction slash, division slash, fullwidth hyphen, and more).
+
 - `dataset:` case field — load events from a JSON / JSONL / EVTX-rendered /
   winlogbeat file instead of declaring them inline, so a suite can assert against
   captured telemetry.

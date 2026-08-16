@@ -44,10 +44,15 @@ engine surfaces the error. Closing `fieldref` behind the existing
 
 ## Mutation catalog
 
-Ten semantics-preserving command-line evasions, each mapped to a MITRE ATT&CK
-technique or Sigma modifier. Mutation targets attacker-controlled fields only and
-never corrupts opaque payloads. The catalog is deliberately conservative: a
-finding is a real evasion an operator could use, not a theoretical one.
+28 semantics-preserving command-line evasions across command-token, windash,
+path, cmd.exe, network/URL, and PowerShell families, each mapped to a MITRE
+ATT&CK technique or Sigma modifier and carrying a remediation hint. Mutation
+targets attacker-controlled fields only and never corrupts opaque payloads.
+Scoring is per technique, not per variant. The catalog is deliberately
+conservative: a finding is a real evasion an operator could use, not a
+theoretical one. Run `ordeal list mutators` for the live list. Two
+allowlist-driven Unicode families (homoglyph, invisible-character) are on the
+roadmap — see [ROADMAP.md](ROADMAP.md).
 
 ## Test coverage of Ordeal itself
 
