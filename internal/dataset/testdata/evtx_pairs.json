@@ -1,0 +1,15 @@
+{
+  "Event": {
+    "System": {
+      "EventID": 4688,
+      "Channel": "Security"
+    },
+    "EventData": {
+      "Data": [
+        { "Name": "NewProcessName", "#text": "C:\\Windows\\System32\\net.exe" },
+        { "@Name": "CommandLine", "#text": "net user attacker P@ssw0rd /add" },
+        { "Name": "SubjectUserName" }
+      ]
+    }
+  }
+}

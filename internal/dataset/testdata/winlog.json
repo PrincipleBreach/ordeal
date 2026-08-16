@@ -1,0 +1,16 @@
+{
+  "records": [
+    {
+      "@timestamp": "2024-05-01T12:00:00.000Z",
+      "message": "Process Create",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "event_id": 1,
+        "event_data": {
+          "Image": "C:\\Users\\dev\\AppData\\Local\\Temp\\payload.exe",
+          "ParentImage": "C:\\Windows\\explorer.exe"
+        }
+      }
+    }
+  ]
+}
