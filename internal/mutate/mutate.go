@@ -604,9 +604,11 @@ func (whitespacePadding) Remediation() string {
 	return "Match individual tokens with separate |contains terms rather than a fixed single-space sequence."
 }
 
-// Every shell collapses repeated whitespace between arguments, so this holds on
-// any platform.
-func (whitespacePadding) Platforms() []Platform { return []Platform{AnyOS} }
+// Windows logs the command line verbatim, so extra spaces persist and can defeat
+// a rule. On Linux/macOS, telemetry records post-expansion argv, which re-splits
+// whitespace — the padding is gone from the log — so this is Windows-only. The
+// nix -c-payload mutators cover the shell-string case there instead.
+func (whitespacePadding) Platforms() []Platform { return []Platform{Windows} }
 
 func (whitespacePadding) Apply(value string) []Result {
 	if !strings.Contains(value, " ") {
