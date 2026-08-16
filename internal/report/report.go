@@ -93,6 +93,11 @@ func mutationsHuman(w io.Writer, r runner.MutationReport) error {
 				styleDim.Render("· baseline did not fire; fix the rule or fixture first"))
 			continue
 		}
+		if res.Attempted == 0 {
+			fmt.Fprintf(w, "%s  %s %s\n", styleWarn.Render("NOTE"), styleRule.Render(res.CaseName),
+				styleDim.Render("· no attacker-controlled fields to mutate"))
+			continue
+		}
 		pct := int(res.Score()*100 + 0.5)
 		head := fmt.Sprintf("%s  survives %d/%d evasions (%d%%)",
 			styleRule.Render(res.CaseName), res.Survived, res.Attempted, pct)
