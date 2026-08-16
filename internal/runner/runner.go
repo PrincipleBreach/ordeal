@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	sigma "github.com/bradleyjkemp/sigma-go"
 	"github.com/principlebreach/ordeal/internal/dataset"
@@ -69,7 +70,7 @@ func (r TestReport) OK() bool { return r.Failed() == 0 }
 func (rn *Runner) RunTests(ctx context.Context, suites []*testcase.Suite) (TestReport, error) {
 	var report TestReport
 	for _, s := range suites {
-		matcher, err := rn.compile(s)
+		matcher, _, err := rn.compile(s)
 		if err != nil {
 			report.Cases = append(report.Cases, CaseResult{
 				Suite: s.Path, Rule: s.Rule, Name: "<compile>", Err: err, ErrMsg: err.Error(),
@@ -215,15 +216,18 @@ func (rn *Runner) RunMutationsWith(ctx context.Context, suites []*testcase.Suite
 		if !s.MutateEnabled() {
 			continue
 		}
-		matcher, err := rn.compile(s)
+		matcher, product, err := rn.compile(s)
 		if err != nil {
 			return report, fmt.Errorf("compiling %s: %w", s.Path, err)
 		}
+		// Only apply mutators appropriate to the rule's platform, so a Windows
+		// evasion is never reported against a Linux rule (or vice versa).
+		applicable := mutate.ForPlatform(mutators, product)
 		for _, c := range s.Cases {
 			if !c.ExpectMatch() || c.IsDataset() {
 				continue // mutation attacks a single inline positive event
 			}
-			report.Rules = append(report.Rules, rn.mutateCase(ctx, matcher, s, c, mutators))
+			report.Rules = append(report.Rules, rn.mutateCase(ctx, matcher, s, c, applicable))
 		}
 	}
 	return report, nil
@@ -293,25 +297,27 @@ func (rn *Runner) mutateCase(ctx context.Context, m engine.Matcher, s *testcase.
 
 // --- Rule loading --------------------------------------------------------
 
-func (rn *Runner) compile(s *testcase.Suite) (engine.Matcher, error) {
+// compile parses and compiles a suite's rule, also returning the rule's
+// logsource product (lowercased) so mutation can gate on platform.
+func (rn *Runner) compile(s *testcase.Suite) (engine.Matcher, string, error) {
 	base := filepath.Dir(s.Path)
 	ruleBytes, err := os.ReadFile(filepath.Join(base, s.Rule))
 	if err != nil {
-		return nil, fmt.Errorf("reading rule: %w", err)
+		return nil, "", fmt.Errorf("reading rule: %w", err)
 	}
 	rule, err := sigma.ParseRule(ruleBytes)
 	if err != nil {
-		return nil, fmt.Errorf("parsing rule: %w", err)
+		return nil, "", fmt.Errorf("parsing rule: %w", err)
 	}
 	var configs []sigma.Config
 	for _, cfgPath := range s.Configs {
 		cfgBytes, err := os.ReadFile(filepath.Join(base, cfgPath))
 		if err != nil {
-			return nil, fmt.Errorf("reading config %s: %w", cfgPath, err)
+			return nil, "", fmt.Errorf("reading config %s: %w", cfgPath, err)
 		}
 		cfg, err := sigma.ParseConfig(cfgBytes)
 		if err != nil {
-			return nil, fmt.Errorf("parsing config %s: %w", cfgPath, err)
+			return nil, "", fmt.Errorf("parsing config %s: %w", cfgPath, err)
 		}
 		configs = append(configs, cfg)
 	}
@@ -322,5 +328,6 @@ func (rn *Runner) compile(s *testcase.Suite) (engine.Matcher, error) {
 	if len(s.Placeholders) > 0 {
 		opts = append(opts, engine.WithPlaceholders(s.Placeholders))
 	}
-	return rn.Engine.Compile(rule, opts...)
+	matcher, err := rn.Engine.Compile(rule, opts...)
+	return matcher, strings.ToLower(rule.Logsource.Product), err
 }

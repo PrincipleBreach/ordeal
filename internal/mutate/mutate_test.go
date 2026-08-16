@@ -154,6 +154,42 @@ func TestEveryMutatorHasMetadata(t *testing.T) {
 	}
 }
 
+func TestForPlatformGating(t *testing.T) {
+	cat := Catalog()
+
+	// Windows gets the full current catalog (default is Windows) plus AnyOS ones.
+	win := ForPlatform(cat, "windows")
+	if len(win) != len(cat) {
+		t.Errorf("windows should receive every current mutator, got %d/%d", len(win), len(cat))
+	}
+
+	// Linux must be a strict subset today (no bash mutators yet) and contain only
+	// platform-agnostic mutators — no Windows caret/powershell leaking in.
+	lin := ForPlatform(cat, "linux")
+	if len(lin) >= len(cat) {
+		t.Fatalf("linux should be a strict subset, got %d/%d", len(lin), len(cat))
+	}
+	for _, m := range lin {
+		anyOS := false
+		for _, p := range platformsOf(m) {
+			if p == AnyOS || p == "linux" {
+				anyOS = true
+			}
+		}
+		if !anyOS {
+			t.Errorf("mutator %q leaked into the linux set", m.Name())
+		}
+	}
+
+	// An empty/unknown product cannot be gated, so everything is kept.
+	if len(ForPlatform(cat, "")) != len(cat) {
+		t.Error("empty product should keep all mutators")
+	}
+	if len(ForPlatform(cat, "solaris")) != len(cat) {
+		t.Error("unknown product should keep all mutators")
+	}
+}
+
 func TestApplyIsDeterministic(t *testing.T) {
 	in := "powershell.exe -NoProfile -Command -EncodedCommand AAAA"
 	first := flagAbbreviation{}.Apply(in)

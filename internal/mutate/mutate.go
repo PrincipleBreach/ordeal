@@ -172,6 +172,57 @@ func set(xs []string) map[string]bool {
 	return m
 }
 
+// Platform identifies an operating-system family a mutator applies to. It maps
+// to a Sigma rule's logsource product.
+type Platform = string
+
+const (
+	Windows Platform = "windows"
+	Linux   Platform = "linux"
+	MacOS   Platform = "macos"
+	// AnyOS marks a mutator that holds regardless of platform (a URL or IP
+	// rewrite the client resolves identically on any OS).
+	AnyOS Platform = "any"
+)
+
+// platformed is optionally implemented by a mutator to declare its platforms. A
+// mutator that does not implement it is treated as Windows-only, which is correct
+// for the original catalog and keeps existing mutators unchanged.
+type platformed interface {
+	Platforms() []Platform
+}
+
+// platformsOf returns a mutator's declared platforms, defaulting to Windows.
+func platformsOf(m Mutator) []Platform {
+	if p, ok := m.(platformed); ok {
+		return p.Platforms()
+	}
+	return []Platform{Windows}
+}
+
+// ForPlatform filters mutators to those applicable to a rule's logsource product
+// ("windows"/"linux"/"macos"). A mutator applies if it targets that product or is
+// platform-agnostic. An empty or unknown product keeps every mutator, since there
+// is nothing to gate on. This is what stops a Windows caret evasion from being
+// reported against a Linux rule, where it would be a false finding.
+func ForPlatform(mutators []Mutator, product string) []Mutator {
+	switch product {
+	case Windows, Linux, MacOS:
+	default:
+		return mutators
+	}
+	var out []Mutator
+	for _, m := range mutators {
+		for _, p := range platformsOf(m) {
+			if p == AnyOS || p == product {
+				out = append(out, m)
+				break
+			}
+		}
+	}
+	return out
+}
+
 // Generate applies the full catalog to each attacker-controlled string field of
 // base and returns all resulting event variants. base is never modified.
 func Generate(base engine.Event, fields []string) []Variant {
@@ -552,6 +603,10 @@ func (whitespacePadding) Describe() string {
 func (whitespacePadding) Remediation() string {
 	return "Match individual tokens with separate |contains terms rather than a fixed single-space sequence."
 }
+
+// Every shell collapses repeated whitespace between arguments, so this holds on
+// any platform.
+func (whitespacePadding) Platforms() []Platform { return []Platform{AnyOS} }
 
 func (whitespacePadding) Apply(value string) []Result {
 	if !strings.Contains(value, " ") {

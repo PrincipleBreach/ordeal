@@ -419,3 +419,11 @@ func (urlPathTraversal) Apply(value string) []Result {
 	}
 	return []Result{{Value: mutated, Note: "inserted a self-cancelling temp/../ segment into the URL path"}}
 }
+
+// The URL and IPv4 rewrites are protocol-level: the client (curl, wget, WinINet,
+// .NET, PowerShell) resolves the alternative form identically on any OS.
+func (ipDecimal) Platforms() []Platform        { return []Platform{AnyOS} }
+func (ipHex) Platforms() []Platform            { return []Platform{AnyOS} }
+func (urlDefaultPort) Platforms() []Platform   { return []Platform{AnyOS} }
+func (urlPercentEncode) Platforms() []Platform { return []Platform{AnyOS} }
+func (urlPathTraversal) Platforms() []Platform { return []Platform{AnyOS} }
