@@ -128,6 +128,21 @@ mutate: false
 Excludes the whole suite from `ordeal mutate`. Use it sparingly and comment the
 reason. A suite opted out of mutation is a suite whose gaps nobody is measuring.
 
+### placeholders
+
+```yaml
+placeholders:
+  Admins_Workstations:
+    - ADMIN-PC-01
+    - ADMIN-PC-02
+```
+
+Optional. Defines values for `%name%` placeholders that a rule references through
+the `|expand` modifier or as a bare `%name%` value. Placeholder values are
+deployment-specific, so a rule that uses them cannot be evaluated until you supply
+them here. A rule that references an undefined placeholder is a compile error, not
+a silent pass.
+
 ### cases
 
 A list. Empty is an error — a suite that asserts nothing is worse than no suite,

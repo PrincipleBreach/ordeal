@@ -5,31 +5,34 @@ Honest accounting of what Ordeal evaluates today. No inflated numbers.
 ## Sigma rule coverage
 
 Ordeal evaluates rules through [`bradleyjkemp/sigma-go`](https://github.com/bradleyjkemp/sigma-go),
-extended in `internal/engine` to close the two largest modifier gaps without
-forking the engine. Measured against a full clone of `SigmaHQ/sigma` (3,780 rule
-files), the base engine evaluates **96.8%**; with the extensions below, **~99.4%**.
+extended in `internal/engine` to close nearly every modifier gap without forking
+the engine. Measured against a full clone of `SigmaHQ/sigma` (3,780 rule files),
+the base engine evaluates **96.8%**; with the extensions below, **~99.9%**.
 
 ### Closed by Ordeal (no fork)
 
-| Modifier | Rules | How |
-|----------|-------|-----|
+| Construct | Rules | How |
+|-----------|-------|-----|
 | `\|windash` | ~108 | Registered into sigma-go's exported `EventValueModifiers` map. Normalizes alternative dash flag prefixes (`/`, en-dash, em-dash, horizontal bar) back to `-` in flag position only, so URLs and paths are untouched. |
-| `Field: null` | ~85 | A rule rewrite (`rewriteNulls`) feeds sigma-go's existing absent-field comparison the `"null"` value it already matches, instead of the raw YAML nil it rejected. |
+| `Field: null` | ~85 | Rule rewrite: feeds sigma-go's existing absent-field comparison the `"null"` value it already matches, instead of the raw YAML nil it rejected. |
+| `\|expand` | ~32 | Registered no-op modifier plus a placeholder expander wired to a suite's `placeholders:` map. |
+| `\|base64offset` | ~5 | Rule rewrite: expands the value into its three offset encodings (validated against the canonical `cmd` vector), OR-matched. |
+| `\|wide` / `\|utf16le` | ~few | Rule rewrite: UTF-16LE encoding of the value. Composes with `base64offset`. |
+| `\|re` sub-flags (`i`/`m`/`s`) | ~2 | Rule rewrite: folded into inline regex flags (`(?i)`). |
 
-Both are covered by tests in `internal/engine`, including a URL false-positive
-guard and an absent-vs-present distinction.
+Every one is covered by tests in `internal/engine`, including a URL
+false-positive guard, an absent-vs-present distinction, and the base64offset
+vector.
 
 ### Still unsupported
 
 | Construct | Rules | Notes |
 |-----------|-------|-------|
-| `\|base64offset` | ~5 | Multi-offset OR-expansion; does not fit the scalar modifier model. |
-| `\|expand` | ~32 | Needs deployment-time placeholder definitions to test meaningfully. |
-| `\|wide`, `\|re` sub-flags, `\|fieldref` | ~8 combined | Long tail; `fieldref` needs event-time cross-field comparison. |
+| `\|fieldref` | ~5 | Compares two fields of the same event at match time. No exported hook exposes the event to a modifier, so this one genuinely needs evaluator internals. |
 | Sigma v2 correlations | 0 in the current ruleset | Spec'd, effectively unused today. |
 
 A rule that uses an unsupported construct is not silently mis-evaluated: the
-engine surfaces the error. Closing the remainder behind the existing
+engine surfaces the error. Closing `fieldref` behind the existing
 `engine.Engine` interface is tracked in [ROADMAP.md](ROADMAP.md).
 
 ## Telemetry input
