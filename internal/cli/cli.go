@@ -5,8 +5,11 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"text/tabwriter"
 
 	"github.com/principlebreach/ordeal/internal/engine"
+	"github.com/principlebreach/ordeal/internal/lint"
+	"github.com/principlebreach/ordeal/internal/mutate"
 	"github.com/principlebreach/ordeal/internal/report"
 	"github.com/principlebreach/ordeal/internal/runner"
 	"github.com/principlebreach/ordeal/internal/testcase"
@@ -19,7 +22,7 @@ var version = "dev"
 // Exit codes, chosen so CI can tell "your rule is wrong" from "the tool broke".
 const (
 	exitOK       = 0
-	exitFindings = 1 // test failed, or a detection was evaded
+	exitFindings = 1 // test failed, a detection was evaded, or lint found an error
 	exitUsage    = 2 // bad flags/paths/config
 )
 
@@ -51,7 +54,7 @@ func newRoot() *cobra.Command {
 		SilenceErrors: true,
 		Version:       version,
 	}
-	root.AddCommand(newRunCmd(), newMutateCmd())
+	root.AddCommand(newRunCmd(), newMutateCmd(), newLintCmd(), newListCmd())
 	return root
 }
 
@@ -63,12 +66,9 @@ func newRunCmd() *cobra.Command {
 		Short: "Assert that rules fire on their declared test cases",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			suites, err := testcase.Discover(args)
+			suites, err := discover(args)
 			if err != nil {
-				return usageErr(err)
-			}
-			if len(suites) == 0 {
-				return usageErr(fmt.Errorf("no %s files found in %v", testcase.Suffix, args))
+				return err
 			}
 			rn := runner.New(engine.NewNative())
 			rep, err := rn.RunTests(context.Background(), suites)
@@ -78,6 +78,7 @@ func newRunCmd() *cobra.Command {
 			if err := report.Tests(cmd.OutOrStdout(), rep, report.Format(format)); err != nil {
 				return usageErr(err)
 			}
+			mutationFailed := false
 			if mutateToo {
 				mrep, err := rn.RunMutations(context.Background(), suites)
 				if err != nil {
@@ -85,11 +86,9 @@ func newRunCmd() *cobra.Command {
 				}
 				fmt.Fprintln(cmd.OutOrStdout())
 				_ = report.Mutations(cmd.OutOrStdout(), mrep, report.Format(format))
-				if !mrep.OK() && rep.OK() {
-					return codedError{code: exitFindings}
-				}
+				mutationFailed = !mrep.OK()
 			}
-			if !rep.OK() {
+			if !rep.OK() || mutationFailed {
 				return codedError{code: exitFindings}
 			}
 			return nil
@@ -102,6 +101,7 @@ func newRunCmd() *cobra.Command {
 
 func newMutateCmd() *cobra.Command {
 	var format string
+	var only, skip []string
 	cmd := &cobra.Command{
 		Use:   "mutate [paths...]",
 		Short: "Attack rules with known evasions and report what slips past",
@@ -111,15 +111,16 @@ func newMutateCmd() *cobra.Command {
 			"each mutation that stops the rule from firing.",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			suites, err := testcase.Discover(args)
+			suites, err := discover(args)
 			if err != nil {
-				return usageErr(err)
+				return err
 			}
-			if len(suites) == 0 {
-				return usageErr(fmt.Errorf("no %s files found in %v", testcase.Suffix, args))
+			mutators := mutate.Select(mutate.Options{Only: only, Skip: skip})
+			if len(mutators) == 0 {
+				return usageErr(fmt.Errorf("no mutators selected"))
 			}
 			rn := runner.New(engine.NewNative())
-			rep, err := rn.RunMutations(context.Background(), suites)
+			rep, err := rn.RunMutationsWith(context.Background(), suites, mutators)
 			if err != nil {
 				return usageErr(err)
 			}
@@ -133,7 +134,73 @@ func newMutateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&format, "format", "f", "human", "output format: human, json")
+	cmd.Flags().StringSliceVar(&only, "only", nil, "restrict to these mutators (comma-separated names)")
+	cmd.Flags().StringSliceVar(&skip, "skip", nil, "exclude these mutators (comma-separated names)")
 	return cmd
+}
+
+func newLintCmd() *cobra.Command {
+	var format string
+	cmd := &cobra.Command{
+		Use:   "lint [paths...]",
+		Short: "Report untested rules and broken or thin test suites",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			rep, err := lint.Run(args)
+			if err != nil {
+				return usageErr(err)
+			}
+			w := cmd.OutOrStdout()
+			var werr error
+			if format == "json" {
+				werr = rep.WriteJSON(w)
+			} else {
+				werr = rep.WriteHuman(w)
+			}
+			if werr != nil {
+				return usageErr(werr)
+			}
+			if !rep.OK() {
+				return codedError{code: exitFindings}
+			}
+			return nil
+		},
+	}
+	cmd.Flags().StringVarP(&format, "format", "f", "human", "output format: human, json")
+	return cmd
+}
+
+func newListCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List the built-in evasion catalog",
+	}
+	cmd.AddCommand(&cobra.Command{
+		Use:   "mutators",
+		Short: "List every mutator, its ATT&CK anchor, and what it does",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			tw := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 2, 2, ' ', 0)
+			fmt.Fprintln(tw, "NAME\tTECHNIQUE\tDESCRIPTION")
+			for _, m := range mutate.Catalog() {
+				fmt.Fprintf(tw, "%s\t%s\t%s\n", m.Name(), m.Technique(), m.Describe())
+			}
+			return tw.Flush()
+		},
+	})
+	return cmd
+}
+
+// discover loads suites from paths and turns an empty result into a usage error.
+func discover(paths []string) ([]*testcase.Suite, error) {
+	suites, err := testcase.Discover(paths)
+	if err != nil {
+		return nil, usageErr(err)
+	}
+	if len(suites) == 0 {
+		return nil, usageErr(fmt.Errorf("no %s files found in %v", testcase.Suffix, paths))
+	}
+	return suites, nil
 }
 
 // --- typed exit codes ----------------------------------------------------
@@ -150,7 +217,12 @@ func (e codedError) Error() string {
 	return fmt.Sprintf("exit %d", e.code)
 }
 
-func usageErr(err error) error { return codedError{code: exitUsage, msg: err.Error()} }
+func usageErr(err error) error {
+	if ce, ok := err.(codedError); ok {
+		return ce
+	}
+	return codedError{code: exitUsage, msg: err.Error()}
+}
 
 func asCoded(err error, out *codedError) bool {
 	if ce, ok := err.(codedError); ok {
