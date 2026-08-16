@@ -1,0 +1,14 @@
+rule: rule.yml
+
+cases:
+  - name: powershell encoded command fires
+    event:
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe -NoProfile -EncodedCommand SQBFAFgA'
+    match: true
+
+  - name: benign powershell get-help is not flagged
+    event:
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe Get-Help Get-Process'
+    match: false

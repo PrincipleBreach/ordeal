@@ -1,0 +1,74 @@
+# goreleaser configuration for ordeal.
+# Docs: https://goreleaser.com
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - id: ordeal
+    main: ./cmd/ordeal
+    binary: ordeal
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/principlebreach/ordeal/internal/cli.version={{.Version}}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
+
+sboms:
+  - artifacts: archive
+
+# Sign checksums and SBOMs with cosign (keyless / OIDC).
+signs:
+  - cmd: cosign
+    signature: ${artifact}.sig
+    certificate: ${artifact}.pem
+    args:
+      - sign-blob
+      - --output-signature=${signature}
+      - --output-certificate=${certificate}
+      - ${artifact}
+      - --yes
+    artifacts: checksum
+    output: true
+
+brews:
+  - name: ordeal
+    repository:
+      owner: principlebreach
+      name: homebrew-tap
+    homepage: https://principlebreach.com
+    description: Adversarial test harness for Sigma detection rules
+    license: MIT
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  github:
+    owner: principlebreach
+    name: ordeal

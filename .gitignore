@@ -1,0 +1,16 @@
+# Binaries
+/ordeal
+/dist/
+*.exe
+*.out
+
+# Go
+*.test
+coverage.out
+coverage.html
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
