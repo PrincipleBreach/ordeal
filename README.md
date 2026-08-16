@@ -34,6 +34,18 @@ Attack your rules and see what evades them:
 ordeal mutate ./rules
 ```
 
+Audit a rules tree for untested or thinly-tested detections:
+
+```bash
+ordeal lint ./rules
+```
+
+List the evasion catalog:
+
+```bash
+ordeal list mutators
+```
+
 A test suite lives next to the rule as `<rule>.test.yml`:
 
 ```yaml
@@ -59,7 +71,13 @@ cases:
 
 - Runs unmodified Sigma rules against inline event fixtures, positive and negative.
 - Asserts not just that a rule fired, but *which named selection* fired.
+- Replays real telemetry — JSON, JSONL, EVTX-rendered, or winlogbeat exports — with a `dataset:` case.
 - Emits `human`, `json`, or `junit` output with distinct exit codes for CI.
+
+### Coverage and hygiene
+
+- `ordeal lint` reports untested rules, dangling suite references, and suites missing positive or negative cases.
+- `ordeal list mutators` prints the evasion catalog with its ATT&CK anchors.
 
 ### Adversarial mutation — the reason Ordeal exists
 
@@ -71,29 +89,37 @@ reports each one that slips past.
 - `flag-abbreviation` — `-EncodedCommand` runs identically as `-enc`.
 - `windash` — `-flag` becomes `/flag`, en-dash, or em-dash.
 - `caret-insertion` — `whoami` becomes `who^ami`; cmd.exe strips the caret.
+- `powershell-tick` — `iex` becomes `` i`ex ``; PowerShell strips the backtick.
 - `quote-insertion` — `powershell` becomes `pow""ershell`.
 - `env-indirection` — `C:\Windows\System32` becomes `%SystemRoot%\System32`.
 - `forward-slash-path`, `trailing-dot`, `whitespace-padding`, `case-flip`.
 
+Two rules keep findings honest. Ordeal mutates only attacker-controlled fields
+(`CommandLine`, not the kernel-resolved `Image`), and it never reshapes an opaque
+payload (a base64 blob is left byte-for-byte intact), because either would model
+an evasion that does not actually work. The full catalog, with the technique each
+mutator models, is in [docs/mutators.md](docs/mutators.md).
+
 ## Example Output
 
 ```
-ordeal mutate ./examples
+ordeal mutate ./examples/powershell_encoded
 
-BREACH  powershell encoded command fires  survives 7/17 evasions (41%)
+BREACH  powershell encoded command fires  survives 7/11 evasions (64%)
         ▲ flag-abbreviation · CommandLine · abbreviated -encodedcommand to -enc
           powershell.exe -NoProfile -enc SQBFAFgA
         ▲ windash · CommandLine · replaced - flag prefix with forward slash
           powershell.exe /NoProfile /EncodedCommand SQBFAFgA
-        ▲ caret-insertion · CommandLine · inserted ^ escape characters inside tokens
-          power^shell.exe -NoPr^ofile -Encoded^Command SQBF^AFgA
-        ▲ quote-insertion · CommandLine · inserted empty quote pairs inside tokens
-          power""shell.exe -NoPr""ofile -Encoded""Command SQBF""AFgA
+        ▲ windash · CommandLine · replaced - flag prefix with en-dash
+          powershell.exe –NoProfile –EncodedCommand SQBFAFgA
+        ▲ windash · CommandLine · replaced - flag prefix with em-dash
+          powershell.exe —NoProfile —EncodedCommand SQBFAFgA
 
-EVADED  3 detections tested, 28 evasions found
+EVADED  1 detections tested, 4 evasions found
 ```
 
-Exit `0` when nothing evades, `1` when a detection is breached, `2` on usage error.
+The base64 payload is left untouched — only the surface changes. Exit `0` when
+nothing evades, `1` when a detection is breached, `2` on usage error.
 
 ## Why This Matters
 
@@ -121,6 +147,15 @@ mutation catalog is drawn from documented obfuscation research:
 - MITRE ATT&CK [T1027 — Obfuscated Files or Information](https://attack.mitre.org/techniques/T1027/) and [T1059.001 — PowerShell](https://attack.mitre.org/techniques/T1059/001/).
 - The Sigma [`windash` value modifier](https://sigmahq.io/docs/basics/modifiers.html).
 - Command-line argument obfuscation research (ArgFuscator, Invoke-DOSfuscation).
+
+## Documentation
+
+- [Test format](docs/test-format.md) — the `<rule>.test.yml` schema, every key.
+- [Mutator catalog](docs/mutators.md) — each evasion and the technique it models.
+- [Writing suites](docs/writing-suites.md) — from a rule to a closed evasion gap.
+- [CI](docs/ci.md) — GitHub Action, exit codes, JUnit output.
+- [Coverage](COVERAGE.md) — what share of real Sigma rules Ordeal evaluates today.
+- [Roadmap](ROADMAP.md) — what is built and what is next.
 
 ## Contributing
 
