@@ -1,0 +1,56 @@
+# ordeal run asserts declared cases and exits 0 when all pass
+ordeal run good
+stdout 'ALL PASS'
+stdout '3 passed, 0 failed'
+
+# a suite whose expectation is wrong fails with a non-zero exit
+! ordeal run wrong
+stdout 'FAIL'
+
+-- good/rule.yml --
+title: Certutil Download
+id: 11111111-1111-1111-1111-111111111111
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    Image|endswith: '\certutil.exe'
+    CommandLine|contains: '-urlcache'
+  condition: selection
+-- good/rule.test.yml --
+rule: rule.yml
+cases:
+  - name: urlcache fires
+    event:
+      Image: 'C:\Windows\System32\certutil.exe'
+      CommandLine: 'certutil.exe -urlcache -f http://x/y a'
+    match: true
+    selections: [selection]
+  - name: second positive
+    event:
+      Image: 'C:\Windows\System32\certutil.exe'
+      CommandLine: 'certutil.exe -urlcache -split http://x/y'
+    match: true
+  - name: dump is benign
+    event:
+      Image: 'C:\Windows\System32\certutil.exe'
+      CommandLine: 'certutil.exe -dump'
+    match: false
+-- wrong/rule.yml --
+title: Certutil Download
+id: 22222222-2222-2222-2222-222222222222
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    CommandLine|contains: '-urlcache'
+  condition: selection
+-- wrong/rule.test.yml --
+rule: rule.yml
+cases:
+  - name: benign wrongly expected to fire
+    event:
+      CommandLine: 'certutil.exe -dump'
+    match: true
