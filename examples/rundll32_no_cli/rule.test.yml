@@ -1,0 +1,16 @@
+# Exercises the `Field: null` modifier — matching an absent command line.
+rule: rule.yml
+mutate: false   # no attacker-controlled command text in the positive case
+
+cases:
+  - name: rundll32 with no command line fires
+    event:
+      Image: 'C:\Windows\System32\rundll32.exe'
+    match: true
+    selections: [selection]
+
+  - name: rundll32 with a normal command line is benign
+    event:
+      Image: 'C:\Windows\System32\rundll32.exe'
+      CommandLine: 'rundll32.exe shell32.dll,Control_RunDLL desk.cpl'
+    match: false

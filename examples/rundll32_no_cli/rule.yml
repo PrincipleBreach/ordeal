@@ -1,0 +1,24 @@
+title: Rundll32 Without Command Line
+id: 7c2e5f1a-6b90-4e3d-9c14-2a7f0b1d8e42
+status: test
+description: >
+  Detects rundll32.exe started with no command line. Legitimate rundll32 always
+  loads a DLL and export; an empty command line is characteristic of process
+  hollowing or injection where the image is spawned suspended and rewritten.
+references:
+  - https://attack.mitre.org/techniques/T1055/
+author: Principle Breach
+tags:
+  - attack.defense_evasion
+  - attack.t1055
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    Image|endswith: '\rundll32.exe'
+    CommandLine: null
+  condition: selection
+falsepositives:
+  - Rare tooling that launches rundll32 without arguments
+level: high

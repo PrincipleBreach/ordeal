@@ -19,8 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `powershell-tick` mutator (backtick escape). Every mutator now carries an
   ATT&CK / Sigma-modifier anchor, shown by `list mutators`.
 - `--only` and `--skip` flags on `ordeal mutate` to restrict the catalog.
+- Engine support for the `|windash` modifier (~108 SigmaHQ rules) and
+  `Field: null` absent-field matching (~85 rules), closing the two largest
+  coverage gaps without forking sigma-go. Raises evaluated coverage from ~96.8%
+  to ~99.4%. See [COVERAGE.md](COVERAGE.md).
 - Example corpus of LOLBin rules with suites (rundll32, regsvr32, mshta,
-  bitsadmin, wmic, schtasks, net user, defender tampering).
+  bitsadmin, wmic, schtasks, net user, defender tampering, rundll32 no-cli).
 
 ### Changed
 
