@@ -95,7 +95,7 @@ func mutationsHuman(w io.Writer, r runner.MutationReport) error {
 		}
 		if res.Attempted == 0 {
 			fmt.Fprintf(w, "%s  %s %s\n", styleWarn.Render("NOTE"), styleRule.Render(res.CaseName),
-				styleDim.Render("· no attacker-controlled fields to mutate"))
+				styleDim.Render("· no applicable evasions for this rule's platform and command"))
 			continue
 		}
 		pct := int(res.Score()*100 + 0.5)
