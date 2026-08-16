@@ -150,7 +150,9 @@ func (rn *Runner) assertDataset(ctx context.Context, s *testcase.Suite, m engine
 
 // --- Adversarial mutation ------------------------------------------------
 
-// Evasion is a single mutation that stopped the rule from firing.
+// Evasion is one mutator technique that stopped the rule from firing. A single
+// technique may defeat the rule via several variants (windash alone has ten
+// dash characters); Variants records how many, while After shows the first.
 type Evasion struct {
 	Mutator     string `json:"mutator"`
 	Field       string `json:"field"`
@@ -158,6 +160,7 @@ type Evasion struct {
 	After       string `json:"after"`
 	Note        string `json:"note"`
 	Remediation string `json:"remediation"`
+	Variants    int    `json:"variants"`
 }
 
 // Resilience records how one positive case held up under mutation.
@@ -171,7 +174,9 @@ type Resilience struct {
 	Evaded          []Evasion `json:"evaded"`
 }
 
-// Score is the fraction of mutations the rule still caught (1.0 == no evasions).
+// Score is the fraction of mutator techniques the rule still caught (1.0 == no
+// technique evaded). Counted per technique, not per variant, so a rule that
+// misses one technique with ten variants is not scored ten times worse.
 func (r Resilience) Score() float64 {
 	if r.Attempted == 0 {
 		return 1
@@ -235,25 +240,47 @@ func (rn *Runner) mutateCase(ctx context.Context, m engine.Matcher, s *testcase.
 	}
 	res.BaselineMatched = true
 
+	// Group variants by mutator, then score per mutator technique: a technique is
+	// evaded if any of its variants slips past. This keeps a ten-variant mutator
+	// (windash) from dominating the score or flooding the report.
 	fields := mutate.MutableFields(c.Event)
-	for _, variant := range mutate.GenerateWith(mutators, c.Event, fields) {
-		res.Attempted++
-		v, err := m.Match(ctx, variant.Event)
-		if err != nil {
-			continue
+	variants := mutate.GenerateWith(mutators, c.Event, fields)
+	grouped := map[string][]mutate.Variant{}
+	var order []string
+	for _, v := range variants {
+		if _, ok := grouped[v.Mutator]; !ok {
+			order = append(order, v.Mutator)
 		}
-		if v.Matched {
+		grouped[v.Mutator] = append(grouped[v.Mutator], v)
+	}
+
+	for _, name := range order {
+		res.Attempted++
+		var firstEvasion *Evasion
+		evaded := 0
+		for _, variant := range grouped[name] {
+			v, err := m.Match(ctx, variant.Event)
+			if err != nil || v.Matched {
+				continue
+			}
+			evaded++
+			if firstEvasion == nil {
+				firstEvasion = &Evasion{
+					Mutator:     variant.Mutator,
+					Field:       variant.Field,
+					Before:      variant.Before,
+					After:       variant.After,
+					Note:        variant.Note,
+					Remediation: variant.Remediation,
+				}
+			}
+		}
+		if evaded == 0 {
 			res.Survived++
 			continue
 		}
-		res.Evaded = append(res.Evaded, Evasion{
-			Mutator:     variant.Mutator,
-			Field:       variant.Field,
-			Before:      variant.Before,
-			After:       variant.After,
-			Note:        variant.Note,
-			Remediation: variant.Remediation,
-		})
+		firstEvasion.Variants = evaded
+		res.Evaded = append(res.Evaded, *firstEvasion)
 	}
 	sort.Slice(res.Evaded, func(i, j int) bool {
 		if res.Evaded[i].Field != res.Evaded[j].Field {

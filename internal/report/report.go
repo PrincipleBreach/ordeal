@@ -99,7 +99,7 @@ func mutationsHuman(w io.Writer, r runner.MutationReport) error {
 			continue
 		}
 		pct := int(res.Score()*100 + 0.5)
-		head := fmt.Sprintf("%s  survives %d/%d evasions (%d%%)",
+		head := fmt.Sprintf("%s  survives %d/%d techniques (%d%%)",
 			styleRule.Render(res.CaseName), res.Survived, res.Attempted, pct)
 		if len(res.Evaded) == 0 {
 			fmt.Fprintf(w, "%s   %s\n", stylePass.Render("HOLD"), head)
@@ -109,8 +109,12 @@ func mutationsHuman(w io.Writer, r runner.MutationReport) error {
 		seenFix := map[string]bool{}
 		var fixes []string
 		for _, e := range res.Evaded {
+			label := "▲ " + e.Mutator
+			if e.Variants > 1 {
+				label += fmt.Sprintf(" (%d variants)", e.Variants)
+			}
 			fmt.Fprintf(w, "        %s %s\n",
-				styleEvaded.Render("▲ "+e.Mutator), styleDim.Render("· "+e.Field+" · "+e.Note))
+				styleEvaded.Render(label), styleDim.Render("· "+e.Field+" · "+e.Note))
 			fmt.Fprintf(w, "          %s\n", styleDim.Render(e.After))
 			if e.Remediation != "" && !seenFix[e.Remediation] {
 				seenFix[e.Remediation] = true
@@ -123,7 +127,7 @@ func mutationsHuman(w io.Writer, r runner.MutationReport) error {
 	}
 	fmt.Fprintln(w)
 	total := r.TotalEvasions()
-	summary := fmt.Sprintf("%d detections tested, %d evasions found", len(r.Rules), total)
+	summary := fmt.Sprintf("%d detections tested, %d techniques evaded", len(r.Rules), total)
 	if r.OK() {
 		fmt.Fprintln(w, stylePass.Render("NO EVASIONS")+"  "+styleDim.Render(summary))
 	} else {
