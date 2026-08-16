@@ -14,6 +14,7 @@ import (
 	"sort"
 
 	sigma "github.com/bradleyjkemp/sigma-go"
+	"github.com/principlebreach/ordeal/internal/dataset"
 	"github.com/principlebreach/ordeal/internal/engine"
 	"github.com/principlebreach/ordeal/internal/mutate"
 	"github.com/principlebreach/ordeal/internal/testcase"
@@ -84,6 +85,9 @@ func (rn *Runner) RunTests(ctx context.Context, suites []*testcase.Suite) (TestR
 
 func (rn *Runner) assertCase(ctx context.Context, s *testcase.Suite, m engine.Matcher, c testcase.Case) CaseResult {
 	res := CaseResult{Suite: s.Path, Rule: s.Rule, Name: c.Name, Expected: c.ExpectMatch()}
+	if c.IsDataset() {
+		return rn.assertDataset(ctx, s, m, c, res)
+	}
 	v, err := m.Match(ctx, c.Event)
 	if err != nil {
 		res.Err = err
@@ -102,6 +106,44 @@ func (rn *Runner) assertCase(ctx context.Context, s *testcase.Suite, m engine.Ma
 		if len(res.MissingSelections) > 0 {
 			res.Pass = false
 		}
+	}
+	return res
+}
+
+// assertDataset requires every event in the referenced file to produce the
+// expected verdict.
+func (rn *Runner) assertDataset(ctx context.Context, s *testcase.Suite, m engine.Matcher, c testcase.Case, res CaseResult) CaseResult {
+	path := filepath.Join(filepath.Dir(s.Path), c.Dataset)
+	events, err := dataset.Load(path)
+	if err != nil {
+		res.Err = err
+		res.ErrMsg = err.Error()
+		return res
+	}
+	if len(events) == 0 {
+		res.Err = fmt.Errorf("dataset %s contained no events", c.Dataset)
+		res.ErrMsg = res.Err.Error()
+		return res
+	}
+	want := c.ExpectMatch()
+	matched := 0
+	for _, ev := range events {
+		v, err := m.Match(ctx, ev)
+		if err != nil {
+			res.Err = err
+			res.ErrMsg = err.Error()
+			return res
+		}
+		if v.Matched {
+			matched++
+		}
+	}
+	// The case passes only if every event agrees with the expectation.
+	ok := (want && matched == len(events)) || (!want && matched == 0)
+	res.Actual = matched > 0
+	res.Pass = ok
+	if !ok {
+		res.ErrMsg = fmt.Sprintf("%d/%d dataset events matched, expected match=%v for all", matched, len(events), want)
 	}
 	return res
 }
@@ -153,8 +195,15 @@ func (r MutationReport) TotalEvasions() int {
 // OK reports whether no rule was evaded.
 func (r MutationReport) OK() bool { return r.TotalEvasions() == 0 }
 
-// RunMutations subjects every matching positive case to the mutation catalog.
+// RunMutations subjects every matching positive case to the full mutation
+// catalog.
 func (rn *Runner) RunMutations(ctx context.Context, suites []*testcase.Suite) (MutationReport, error) {
+	return rn.RunMutationsWith(ctx, suites, mutate.Catalog())
+}
+
+// RunMutationsWith is RunMutations with an explicit mutator set, so callers can
+// restrict the attack to a chosen subset.
+func (rn *Runner) RunMutationsWith(ctx context.Context, suites []*testcase.Suite, mutators []mutate.Mutator) (MutationReport, error) {
 	var report MutationReport
 	for _, s := range suites {
 		if !s.MutateEnabled() {
@@ -165,16 +214,16 @@ func (rn *Runner) RunMutations(ctx context.Context, suites []*testcase.Suite) (M
 			return report, fmt.Errorf("compiling %s: %w", s.Path, err)
 		}
 		for _, c := range s.Cases {
-			if !c.ExpectMatch() {
-				continue // only positive detections can be evaded
+			if !c.ExpectMatch() || c.IsDataset() {
+				continue // mutation attacks a single inline positive event
 			}
-			report.Rules = append(report.Rules, rn.mutateCase(ctx, s, matcher, c))
+			report.Rules = append(report.Rules, rn.mutateCase(ctx, matcher, s, c, mutators))
 		}
 	}
 	return report, nil
 }
 
-func (rn *Runner) mutateCase(ctx context.Context, s *testcase.Suite, m engine.Matcher, c testcase.Case) Resilience {
+func (rn *Runner) mutateCase(ctx context.Context, m engine.Matcher, s *testcase.Suite, c testcase.Case, mutators []mutate.Mutator) Resilience {
 	res := Resilience{Suite: s.Path, Rule: s.Rule, CaseName: c.Name}
 
 	base, err := m.Match(ctx, c.Event)
@@ -185,8 +234,8 @@ func (rn *Runner) mutateCase(ctx context.Context, s *testcase.Suite, m engine.Ma
 	}
 	res.BaselineMatched = true
 
-	fields := mutate.StringFields(c.Event)
-	for _, variant := range mutate.Generate(c.Event, fields) {
+	fields := mutate.MutableFields(c.Event)
+	for _, variant := range mutate.GenerateWith(mutators, c.Event, fields) {
 		res.Attempted++
 		v, err := m.Match(ctx, variant.Event)
 		if err != nil {
