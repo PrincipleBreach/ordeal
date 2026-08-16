@@ -1,0 +1,39 @@
+# list mutators prints the catalog
+ordeal list mutators
+stdout 'flag-abbreviation'
+stdout 'windash'
+stdout 'TECHNIQUE'
+
+# lint flags a dangling rule reference as an error and exits non-zero
+! ordeal lint .
+stdout 'ERROR'
+stdout '1 errors'
+
+-- good/rule.yml --
+title: Good Rule
+id: 44444444-4444-4444-4444-444444444444
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    CommandLine|contains: '-urlcache'
+  condition: selection
+-- good/rule.test.yml --
+rule: rule.yml
+cases:
+  - name: fires
+    event:
+      CommandLine: 'certutil.exe -urlcache http://x/y'
+    match: true
+  - name: benign
+    event:
+      CommandLine: 'certutil.exe -dump'
+    match: false
+-- broken/rule.test.yml --
+rule: does-not-exist.yml
+cases:
+  - name: fires
+    event:
+      CommandLine: 'x'
+    match: true

