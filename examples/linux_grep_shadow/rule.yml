@@ -1,0 +1,25 @@
+title: Shadow File Read via Shell
+id: 9f3c1e77-2a4b-4c8e-b1d2-6e5a0f9c7b31
+status: test
+description: >
+  Detects a shell reading /etc/shadow with grep, a common credential-access step
+  once an attacker has a shell. Matches the shell -c payload where the obfuscated
+  form is logged.
+references:
+  - https://attack.mitre.org/techniques/T1003/008/
+author: Principle Breach
+tags:
+  - attack.credential_access
+  - attack.t1003.008
+logsource:
+  category: process_creation
+  product: linux
+detection:
+  selection_cmd:
+    CommandLine|contains: 'grep'
+  selection_target:
+    CommandLine|contains: '/etc/shadow'
+  condition: selection_cmd and selection_target
+falsepositives:
+  - Administrators auditing password hashes
+level: high

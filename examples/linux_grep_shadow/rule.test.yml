@@ -1,0 +1,20 @@
+# Linux example. The obfuscation survives because the payload is a literal
+# argument to bash -c (see docs/mutators.md on argv logging).
+rule: rule.yml
+
+cases:
+  - name: grep shadow via bash -c fires
+    event:
+      CommandLine: 'bash -c "grep -r root /etc/shadow"'
+    match: true
+    selections: [selection_cmd, selection_target]
+
+  - name: grep shadow bare invocation fires
+    event:
+      CommandLine: 'grep -r root /etc/shadow'
+    match: true
+
+  - name: benign ls is not flagged
+    event:
+      CommandLine: 'bash -c "ls -la /home/user"'
+    match: false

@@ -1,0 +1,24 @@
+title: osascript Shell Execution
+id: 2b8d4a1f-9c3e-4d76-a5b0-7f1e2c6d9084
+status: test
+description: >
+  Detects osascript running a shell command via "do shell script", a common
+  macOS execution and download-cradle technique.
+references:
+  - https://attack.mitre.org/techniques/T1059/002/
+author: Principle Breach
+tags:
+  - attack.execution
+  - attack.t1059.002
+logsource:
+  category: process_creation
+  product: macos
+detection:
+  selection_bin:
+    CommandLine|contains: 'osascript -e'
+  selection_action:
+    CommandLine|contains: 'do shell script'
+  condition: selection_bin and selection_action
+falsepositives:
+  - Administrative automation using AppleScript
+level: high

