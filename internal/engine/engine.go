@@ -61,6 +61,9 @@ func (Native) Compile(rule sigma.Rule, configs ...sigma.Config) (Matcher, error)
 	if len(configs) > 0 {
 		opts = append(opts, evaluator.WithConfig(configs...))
 	}
+	// Close the `Field: null` gap before evaluation (see rewriteNulls). windash
+	// is handled by the modifier registered in this package's init.
+	rule = rewriteNulls(rule)
 	return &nativeMatcher{
 		title: rule.Title,
 		eval:  evaluator.ForRule(rule, opts...),
