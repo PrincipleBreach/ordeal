@@ -1,0 +1,37 @@
+title: Scheduled Task Created For Suspicious Payload
+id: e37041ba-6d59-4c8e-9f72-5b18ac2d63f0
+status: test
+description: >
+  Detects schtasks.exe registering a new scheduled task whose action is an
+  interpreter or a payload staged in a world-writable directory, a common
+  persistence and privilege-escalation pattern.
+references:
+  - https://attack.mitre.org/techniques/T1053/005/
+author: Principle Breach
+tags:
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.execution
+  - attack.t1053.005
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_img:
+    Image|endswith: '\schtasks.exe'
+  selection_create:
+    CommandLine|contains:
+      - '/create'
+      - '-create'
+  selection_payload:
+    CommandLine|contains:
+      - 'powershell'
+      - 'cmd.exe /c'
+      - 'mshta'
+      - '\Users\Public\'
+      - '\AppData\Roaming\'
+      - '/ru system'
+  condition: selection_img and selection_create and selection_payload
+falsepositives:
+  - Management tooling that schedules maintenance scripts
+level: high

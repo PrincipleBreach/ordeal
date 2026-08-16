@@ -1,0 +1,25 @@
+title: WMIC Process Call Create
+id: b06e5c38-9147-42fa-8d21-3c7be0a4915d
+status: test
+description: >
+  Detects wmic.exe spawning a process through the Win32_Process Create method,
+  used for local and lateral execution because the child is parented by
+  WmiPrvSE.exe rather than the calling shell.
+references:
+  - https://attack.mitre.org/techniques/T1047/
+author: Principle Breach
+tags:
+  - attack.execution
+  - attack.t1047
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_img:
+    Image|endswith: '\wmic.exe'
+  selection_call:
+    CommandLine|contains: 'process call create'
+  condition: selection_img and selection_call
+falsepositives:
+  - Administrative scripts that use WMI for remote software installs
+level: high
