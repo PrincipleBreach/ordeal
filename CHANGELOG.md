@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Linux and macOS mutator families (28 -> 41 evasions). Nine `-c`-payload-aware
+  shell mutators (quote/backslash/empty-expansion/ANSI-C/continuation/comment,
+  `${IFS}`, brace lists, zsh `${=IFS}`) and four macOS-specific ones (`/private/`
+  paths, `osascript -l`, `base64 -D`, `python -c` spacing). Sourced from GTFOBins,
+  Bashfuscator, DOSfuscation, and on-host verification across bash/dash/zsh.
+- Platform gating: each mutator declares its OS families and mutation applies only
+  those matching the rule's logsource product, so a Windows evasion is never
+  reported against a Linux or macOS rule. URL/IP rewrites are platform-agnostic.
+- Linux and macOS example rules (shadow read via shell, osascript execution).
+
 - Expanded the mutation catalog from 10 to 28 evasions across command-token,
   windash, path, cmd.exe, network/URL, and PowerShell families — each mapped to a
   MITRE ATT&CK technique. Sourced from ArgFuscator, Invoke-Obfuscation, DOSfuscation,

@@ -83,22 +83,21 @@ cases:
 
 Ordeal asks the attacker's question: what is the cheapest change that keeps the
 behaviour identical but stops the rule from firing? For every positive case that
-fires, it applies a catalog of **28 semantics-preserving evasions** and reports
-each one that slips past — with the fix.
+fires, it applies a catalog of **41 semantics-preserving evasions across Windows,
+Linux, and macOS** and reports each one that slips past — with the fix.
 
-- **Command tokens** — caret and backtick insertion, empty quotes, case flips.
-- **Flags** — `flag-abbreviation` (`-EncodedCommand` → `-enc`), `windash` (`-flag` → `/flag` and every alternative dash).
-- **Paths** — separator doubling, `\.\` and `\..\` canonicalization, `.exe` omission, 8.3 short names.
-- **cmd.exe** — comma/semicolon token separators, `%VAR:~0%` indirection.
-- **Network** — IPv4 as decimal or hex, default ports, percent-encoding, URL path traversal.
-- **PowerShell** — cmdlet aliases, `System.` shortening, quoted member names, string concatenation, the `-f` format operator.
+- **Windows** — caret/backtick/quote insertion, `flag-abbreviation`, `windash` (every alternative dash), path canonicalization, `.exe` omission, 8.3 short names, cmd token separators, `%VAR:~0%`, and the PowerShell set (aliases, `System.` shortening, quoted members, concatenation, `-f` format).
+- **Network** (any OS) — IPv4 as decimal or hex, default ports, percent-encoding, URL path traversal.
+- **Linux/macOS shell** — quote/backslash/empty-expansion, ANSI-C quoting, line continuation, `${IFS}`, brace lists, and the zsh `${=IFS}` sibling.
+- **macOS** — `/tmp`→`/private/tmp`, `osascript -l AppleScript`, `base64 -D`, `python -c` spacing.
 
-Each finding prints its **remediation** — the Sigma change that catches the
-evasion. Two rules keep findings honest: Ordeal mutates only attacker-controlled
-fields (`CommandLine`, not the kernel-resolved `Image`), and never reshapes an
-opaque payload (a base64 blob stays byte-for-byte intact). Every mutator is mapped
-to a MITRE ATT&CK technique — see [docs/mutators.md](docs/mutators.md), or run
-`ordeal list mutators`.
+Mutation is **platform-gated** on the rule's `logsource.product`, so a Windows
+caret is never reported against a Linux rule. The shell mutators respect that
+Linux/macOS telemetry logs post-expansion argv, so they fire only inside a literal
+`bash -c "..."` payload. Each finding prints its **remediation** — the Sigma
+change that catches it. Ordeal mutates only attacker-controlled fields and never
+reshapes an opaque payload. Every mutator maps to a MITRE ATT&CK technique — see
+[docs/mutators.md](docs/mutators.md), or run `ordeal list mutators`.
 
 ## Example Output
 

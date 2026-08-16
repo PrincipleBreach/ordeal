@@ -73,6 +73,13 @@ which is worse than a missing mutator:
    must skip opaque payload blobs (`isOpaque`). Mutation only ever touches
    attacker-controlled command text (`Classify` → `ClassCommand`), never a
    kernel-resolved field like `Image`.
+3. **Declare the platform.** A mutator that is not Windows-only implements
+   `Platforms() []Platform` (`Windows`/`Linux`/`MacOS`/`AnyOS`; default is
+   Windows). Mutation is gated to the rule's logsource product so a Windows
+   evasion never fires against a Linux rule. Linux/macOS telemetry logs
+   post-expansion argv, so shell mutators (`mut_nix.go`) fire only inside a
+   literal `-c` payload via `nixPayload`, and `$IFS`/brace forms check the
+   payload interpreter (not zsh / bash-only).
 
 Scoring is per technique, not per variant: a mutator that defeats a rule through
 ten variants counts once.

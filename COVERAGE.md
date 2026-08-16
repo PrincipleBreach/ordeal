@@ -45,11 +45,22 @@ match time, so closing it needs evaluator-level work behind the existing
 
 ## Mutation catalog
 
-28 semantics-preserving command-line evasions across command-token, windash,
-path, cmd.exe, network/URL, and PowerShell families, each mapped to a MITRE
-ATT&CK technique or Sigma modifier and carrying a remediation hint. Mutation
-targets attacker-controlled fields only and never corrupts opaque payloads.
-Scoring is per technique, not per variant. The catalog is deliberately
+41 semantics-preserving command-line evasions across Windows, Linux, and macOS,
+each mapped to a MITRE ATT&CK technique or Sigma modifier and carrying a
+remediation hint. Families: Windows command-token, windash, path, cmd.exe,
+network/URL, PowerShell; Linux/macOS shell; macOS-specific.
+
+Mutation is **platform-gated** on the rule's logsource product, so a Windows
+caret or PowerShell evasion is never reported against a Linux or macOS rule (and
+vice versa). URL and IP rewrites are platform-agnostic. Mutation targets
+attacker-controlled fields only, never corrupts opaque payloads, and scores per
+technique, not per variant.
+
+The Linux/macOS shell mutators respect one hard truth: Linux telemetry (auditd,
+Sysmon-for-Linux) logs post-expansion argv, so shell obfuscation only survives
+inside a literal interpreter `-c` payload (`bash -c "..."`, cron, systemd,
+webshells). Those mutators fire only there, and `$IFS`/brace forms are gated by
+the payload's interpreter (bash vs zsh). The catalog is deliberately
 conservative: a finding is a real evasion an operator could use, not a
 theoretical one. Run `ordeal list mutators` for the live list.
 
