@@ -32,8 +32,9 @@ vector.
 | Sigma v2 correlations | 0 in the current ruleset | Spec'd, effectively unused today. |
 
 A rule that uses an unsupported construct is not silently mis-evaluated: the
-engine surfaces the error. Closing `fieldref` behind the existing
-`engine.Engine` interface is tracked in [ROADMAP.md](ROADMAP.md).
+engine surfaces the error. `fieldref` compares two fields of the same event at
+match time, so closing it needs evaluator-level work behind the existing
+`engine.Engine` interface.
 
 ## Telemetry input
 
@@ -50,9 +51,7 @@ ATT&CK technique or Sigma modifier and carrying a remediation hint. Mutation
 targets attacker-controlled fields only and never corrupts opaque payloads.
 Scoring is per technique, not per variant. The catalog is deliberately
 conservative: a finding is a real evasion an operator could use, not a
-theoretical one. Run `ordeal list mutators` for the live list. Two
-allowlist-driven Unicode families (homoglyph, invisible-character) are on the
-roadmap — see [ROADMAP.md](ROADMAP.md).
+theoretical one. Run `ordeal list mutators` for the live list.
 
 ## Test coverage of Ordeal itself
 

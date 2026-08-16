@@ -155,7 +155,6 @@ mutation catalog is drawn from documented obfuscation research:
 - [Writing suites](docs/writing-suites.md) — from a rule to a closed evasion gap.
 - [CI](docs/ci.md) — GitHub Action, exit codes, JUnit output.
 - [Coverage](COVERAGE.md) — what share of real Sigma rules Ordeal evaluates today.
-- [Roadmap](ROADMAP.md) — what is built and what is next.
 
 ## Contributing
 
