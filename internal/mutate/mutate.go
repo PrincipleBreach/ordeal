@@ -355,10 +355,20 @@ func (windashSubstitution) Apply(value string) []Result {
 		return nil
 	}
 	var out []Result
+	// The full set of alternative flag-prefix characters the Windows argument
+	// parser folds back to "-", per Wietze Beukema's command-line-obfuscation
+	// research and the ArgFuscator corpus (certutil, for one, accepts U+2215).
 	for _, alt := range []struct{ ch, name string }{
 		{"/", "forward slash"},
 		{"\u2013", "en-dash"},
 		{"\u2014", "em-dash"},
+		{"\u2010", "hyphen"},
+		{"\u2012", "figure dash"},
+		{"\u2015", "horizontal bar"},
+		{"\u2212", "minus sign"},
+		{"\u2044", "fraction slash"},
+		{"\u2215", "division slash"},
+		{"\uff0d", "fullwidth hyphen-minus"},
 	} {
 		mutated := flagToken.ReplaceAllString(value, "${1}"+alt.ch+"${2}")
 		out = append(out, Result{Value: mutated, Note: "replaced - flag prefix with " + alt.name})

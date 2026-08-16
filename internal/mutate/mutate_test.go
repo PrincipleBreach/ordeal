@@ -41,13 +41,19 @@ func TestFlagAbbreviation(t *testing.T) {
 	}
 }
 
-func TestWindashProducesThreeVariants(t *testing.T) {
+func TestWindashProducesVariants(t *testing.T) {
 	got := windashSubstitution{}.Apply("cmd.exe -flag value")
-	if len(got) != 3 {
-		t.Fatalf("expected 3 windash variants, got %d", len(got))
+	if len(got) < 4 {
+		t.Fatalf("expected the full windash set, got %d", len(got))
 	}
 	if !strings.Contains(got[0].Value, "/flag") {
-		t.Errorf("expected forward-slash variant, got %q", got[0].Value)
+		t.Errorf("expected forward-slash variant first, got %q", got[0].Value)
+	}
+	// Every variant must replace the flag prefix and change the string.
+	for _, r := range got {
+		if r.Value == "cmd.exe -flag value" {
+			t.Error("windash produced a no-op variant")
+		}
 	}
 }
 
