@@ -32,16 +32,26 @@ type Suite struct {
 	Path string `yaml:"-"`
 }
 
-// Case is a single expectation: an event plus the verdict it should produce.
+// Case is a single expectation: an event (or a dataset of events) plus the
+// verdict it should produce.
 type Case struct {
-	Name  string                 `yaml:"name"`
+	Name string `yaml:"name"`
+	// Event is an inline event. Exactly one of Event or Dataset must be set.
 	Event map[string]interface{} `yaml:"event"`
+	// Dataset is a path (relative to the suite) to a JSON/JSONL telemetry file
+	// whose every event must produce the expected verdict. Use it to assert a
+	// rule against real captured logs instead of a hand-written event.
+	Dataset string `yaml:"dataset"`
 	// Match is the expected verdict. Defaults to true when omitted, since
 	// positive cases dominate.
 	Match *bool `yaml:"match"`
 	// Selections optionally asserts which named selections must have matched.
+	// Valid only for an inline positive case.
 	Selections []string `yaml:"selections"`
 }
+
+// IsDataset reports whether the case draws its events from a dataset file.
+func (c Case) IsDataset() bool { return c.Dataset != "" }
 
 // ExpectMatch reports the expected verdict, defaulting to true.
 func (c Case) ExpectMatch() bool {
@@ -94,11 +104,17 @@ func (s Suite) validate() error {
 			return fmt.Errorf("cases[%d]: duplicate case name %q", i, c.Name)
 		}
 		seen[c.Name] = true
-		if len(c.Event) == 0 {
-			return fmt.Errorf("case %q: 'event' must not be empty", c.Name)
+		switch {
+		case len(c.Event) == 0 && c.Dataset == "":
+			return fmt.Errorf("case %q: one of 'event' or 'dataset' is required", c.Name)
+		case len(c.Event) > 0 && c.Dataset != "":
+			return fmt.Errorf("case %q: 'event' and 'dataset' are mutually exclusive", c.Name)
 		}
 		if len(c.Selections) > 0 && !c.ExpectMatch() {
 			return fmt.Errorf("case %q: 'selections' cannot be asserted when match is false", c.Name)
+		}
+		if len(c.Selections) > 0 && c.IsDataset() {
+			return fmt.Errorf("case %q: 'selections' cannot be asserted on a dataset case", c.Name)
 		}
 	}
 	return nil
