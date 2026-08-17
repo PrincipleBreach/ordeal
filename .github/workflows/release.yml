@@ -27,3 +27,6 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional: set this secret to a PAT with write access to the
+          # homebrew-tap repo to publish the Homebrew cask. Empty is fine.
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}

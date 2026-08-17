@@ -16,6 +16,11 @@ Trial by fire for Sigma detection rules. Ordeal asserts a rule fires on the even
 go install github.com/principlebreach/ordeal/cmd/ordeal@latest
 ```
 
+Or download a prebuilt binary for your platform from the
+[releases](https://github.com/principlebreach/ordeal/releases).
+
+Homebrew:
+
 ```bash
 brew install principlebreach/tap/ordeal
 ```

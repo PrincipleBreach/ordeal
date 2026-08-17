@@ -56,6 +56,11 @@ homebrew_casks:
     repository:
       owner: principlebreach
       name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    # Publishing the cask requires a token with write access to the tap repo.
+    # Until TAP_GITHUB_TOKEN is set as a secret, skip the upload so the release
+    # still ships binaries, signatures, and the SBOM.
+    skip_upload: '{{ if .Env.TAP_GITHUB_TOKEN }}false{{ else }}true{{ end }}'
     homepage: https://principlebreach.com
     description: Adversarial test harness for Sigma detection rules
     license: MIT
