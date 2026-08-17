@@ -51,7 +51,7 @@ signs:
     artifacts: checksum
     output: true
 
-brews:
+homebrew_casks:
   - name: ordeal
     repository:
       owner: principlebreach
