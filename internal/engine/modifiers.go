@@ -90,7 +90,44 @@ func rewriteFieldMatcher(fm *sigma.FieldMatcher) {
 		}
 	}
 
-	fm.Modifiers = stripConsumed(fm.Modifiers, reFlags != "")
+	fm.Modifiers = comparatorLast(stripConsumed(fm.Modifiers, reFlags != ""))
+}
+
+// comparators are the Sigma comparison modifiers, which sigma-go requires to be
+// the last modifier in a chain.
+var comparators = map[string]bool{
+	"contains": true, "endswith": true, "startswith": true, "re": true,
+	"cidr": true, "gt": true, "gte": true, "lt": true, "lte": true,
+}
+
+// comparatorLast reorders a modifier chain so the comparator sits last, with one
+// exception: the "all" flag must remain the final element, because sigma-go
+// consumes it only in that position. SigmaHQ writes windash after the comparator
+// (CommandLine|contains|windash), but sigma-go rejects a comparator that is not
+// final; reordering to windash|contains fixes the ~100 canonical windash rules.
+// Reordering is semantics-preserving: value and event modifiers apply before the
+// comparator regardless of their written order.
+func comparatorLast(mods []string) []string {
+	if len(mods) < 2 {
+		return mods
+	}
+	var others, comps []string
+	hasAll := false
+	for _, m := range mods {
+		switch {
+		case m == "all":
+			hasAll = true
+		case comparators[m]:
+			comps = append(comps, m)
+		default:
+			others = append(others, m)
+		}
+	}
+	out := append(others, comps...)
+	if hasAll {
+		out = append(out, "all")
+	}
+	return out
 }
 
 func hasModifier(mods []string, name string) bool {

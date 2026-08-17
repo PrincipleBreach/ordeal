@@ -50,6 +50,39 @@ func TestWindashMatchesAlternativeDashes(t *testing.T) {
 	}
 }
 
+func TestWindashCanonicalOrdering(t *testing.T) {
+	// SigmaHQ writes windash AFTER the comparator (|contains|windash). sigma-go
+	// requires the comparator last, so this ordering must be normalized or the
+	// ~100 real windash rules fail to evaluate.
+	m := compile(t, `title: windash-order
+logsource: {category: process_creation}
+detection:
+  sel:
+    CommandLine|contains|windash: '-EncodedCommand'
+  condition: sel`)
+	if !matches(t, m, Event{"CommandLine": "powershell.exe /EncodedCommand AAAA"}) {
+		t.Error("canonical |contains|windash rule should match the /flag form")
+	}
+}
+
+func TestContainsAllStillWorks(t *testing.T) {
+	// Reordering must not break the far more common |contains|all form.
+	m := compile(t, `title: contains-all
+logsource: {category: process_creation}
+detection:
+  sel:
+    CommandLine|contains|all:
+      - 'create'
+      - 'binPath'
+  condition: sel`)
+	if !matches(t, m, Event{"CommandLine": "sc create x binPath= c:\\evil.exe"}) {
+		t.Error("|contains|all should match when all tokens are present")
+	}
+	if matches(t, m, Event{"CommandLine": "sc create x"}) {
+		t.Error("|contains|all should not match when a token is missing")
+	}
+}
+
 func TestWindashDoesNotOvermatchURLs(t *testing.T) {
 	m := compile(t, windashRule)
 	// A slash inside a URL must not be normalized into a flag and manufacture a
