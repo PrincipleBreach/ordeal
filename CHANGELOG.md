@@ -42,8 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--only` and `--skip` flags on `ordeal mutate` to restrict the catalog.
 - Engine support for the `|windash`, `Field: null`, `|base64offset`, `|wide`,
   `|re` sub-flag, and `|expand` modifiers, closing nearly every coverage gap
-  without forking sigma-go. Raises evaluated coverage from ~96.8% to ~99.9%
-  (only `|fieldref` remains). See [COVERAGE.md](COVERAGE.md).
+  without forking sigma-go, including the canonical `|contains|windash` ordering.
+  Measured against the SigmaHQ corpus, 96.6% of detection rules evaluate cleanly
+  and only 4 use a genuinely unsupported construct (`|fieldref`). See
+  [COVERAGE.md](COVERAGE.md).
 - `placeholders:` suite key — defines values for `%name%` placeholders so rules
   using `|expand` or bare placeholders can be evaluated.
 - Example corpus of LOLBin rules with suites (rundll32, regsvr32, mshta,
@@ -61,10 +63,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   left byte-for-byte intact), which previously produced evasions that would not
   actually execute.
 
-## [0.1.0] - 2026-08-17
+## [0.1.0] — first public release (pending)
 
-Initial release. Ordeal asserts that a Sigma rule fires on the events it should,
-then attacks the rule with known evasions and reports what slips past.
+The first tagged release will publish everything above. Ordeal asserts that a
+Sigma rule fires on the events it should, then attacks the rule with known
+evasions and reports what slips past.
 
 ### Added
 
@@ -88,9 +91,6 @@ then attacks the rule with known evasions and reports what slips past.
   `version` inputs.
 - Single static binary for linux, darwin, and windows on amd64 and arm64, with
   signed checksums and SBOMs.
-
-[Unreleased]: https://github.com/principlebreach/ordeal/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/principlebreach/ordeal/releases/tag/v0.1.0
 
 ---
 

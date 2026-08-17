@@ -5,36 +5,41 @@ Honest accounting of what Ordeal evaluates today. No inflated numbers.
 ## Sigma rule coverage
 
 Ordeal evaluates rules through [`bradleyjkemp/sigma-go`](https://github.com/bradleyjkemp/sigma-go),
-extended in `internal/engine` to close nearly every modifier gap without forking
-the engine. Measured against a full clone of `SigmaHQ/sigma` (3,780 rule files),
-the base engine evaluates **96.8%**; with the extensions below, **~99.9%**.
+extended in `internal/engine` to close modifier gaps without forking the engine.
+
+### Measured against the live corpus
+
+Numbers below are measured, not estimated, against a shallow clone of
+`SigmaHQ/sigma` (2026-08-18): **3,132 single detection rules** (correlation and
+non-detection files excluded). Each rule is compiled with Ordeal's engine and
+evaluated against a trivial probe event.
+
+| Outcome | Rules | Share |
+|---------|-------|-------|
+| Evaluate cleanly | 3,025 | **96.6%** |
+| Need a `placeholders:` definition (`\|expand`, `%name%`) | 25 | 0.8% |
+| Need a field-shaped event (`\|cidr`, numeric) — supported, probe artifact | ~78 | 2.5% |
+| Genuinely unsupported construct (`\|fieldref`) | 4 | **0.1%** |
+
+Excluding placeholder rules (which need per-deployment values) and probe
+artifacts (the rule's constructs are supported; the synthetic event just lacked
+the field), **only 4 rules use a construct Ordeal cannot evaluate.**
 
 ### Closed by Ordeal (no fork)
 
-| Construct | Rules | How |
-|-----------|-------|-----|
-| `\|windash` | ~108 | Registered into sigma-go's exported `EventValueModifiers` map. Normalizes alternative dash flag prefixes (`/`, en-dash, em-dash, horizontal bar) back to `-` in flag position only, so URLs and paths are untouched. |
-| `Field: null` | ~85 | Rule rewrite: feeds sigma-go's existing absent-field comparison the `"null"` value it already matches, instead of the raw YAML nil it rejected. |
-| `\|expand` | ~32 | Registered no-op modifier plus a placeholder expander wired to a suite's `placeholders:` map. |
-| `\|base64offset` | ~5 | Rule rewrite: expands the value into its three offset encodings (validated against the canonical `cmd` vector), OR-matched. |
-| `\|wide` / `\|utf16le` | ~few | Rule rewrite: UTF-16LE encoding of the value. Composes with `base64offset`. |
-| `\|re` sub-flags (`i`/`m`/`s`) | ~2 | Rule rewrite: folded into inline regex flags (`(?i)`). |
-
-Every one is covered by tests in `internal/engine`, including a URL
-false-positive guard, an absent-vs-present distinction, and the base64offset
-vector.
+`\|windash` (including the canonical `\|contains\|windash` ordering that SigmaHQ
+uses and sigma-go otherwise rejects), `Field: null`, `\|base64offset`, `\|wide` /
+`\|utf16le`, `\|re` sub-flags (`i`/`m`/`s`), and `\|expand` (via the
+`placeholders:` map). Each is covered by tests in `internal/engine`, including a
+URL false-positive guard, an absent-vs-present distinction, the base64offset
+vector, and the windash-ordering regression.
 
 ### Still unsupported
 
-| Construct | Rules | Notes |
-|-----------|-------|-------|
-| `\|fieldref` | ~5 | Compares two fields of the same event at match time. No exported hook exposes the event to a modifier, so this one genuinely needs evaluator internals. |
-| Sigma v2 correlations | 0 in the current ruleset | Spec'd, effectively unused today. |
-
-A rule that uses an unsupported construct is not silently mis-evaluated: the
-engine surfaces the error. `fieldref` compares two fields of the same event at
-match time, so closing it needs evaluator-level work behind the existing
-`engine.Engine` interface.
+`\|fieldref` (4 rules) compares two fields of the same event at match time. No
+exported hook exposes the event to a modifier, so closing it needs evaluator-level
+work behind the existing `engine.Engine` interface. A rule using an unsupported
+construct is not silently mis-evaluated — the engine surfaces the error.
 
 ## Telemetry input
 
