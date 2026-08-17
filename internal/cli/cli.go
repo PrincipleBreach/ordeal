@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"text/tabwriter"
 
 	"github.com/principlebreach/ordeal/internal/engine"
@@ -16,8 +17,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// version is overridden at build time via -ldflags.
+// version is overridden at build time via -ldflags in release builds.
 var version = "dev"
+
+// resolveVersion reports the build version. Release binaries have it injected via
+// -ldflags; a `go install module@vX` build has no ldflags, so fall back to the
+// module version the Go toolchain records in the build info.
+func resolveVersion() string {
+	if version != "dev" {
+		return version
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		if v := bi.Main.Version; v != "" && v != "(devel)" {
+			return v
+		}
+	}
+	return version
+}
 
 // Exit codes, chosen so CI can tell "your rule is wrong" from "the tool broke".
 const (
@@ -52,7 +68,7 @@ func newRoot() *cobra.Command {
 			"evasions and reports what slips past.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		Version:       version,
+		Version:       resolveVersion(),
 	}
 	root.AddCommand(newRunCmd(), newMutateCmd(), newLintCmd(), newListCmd())
 	return root

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Distribute via a Homebrew formula instead of a cask. Formulae are not
+  quarantined, so the binary runs on macOS without a Gatekeeper prompt or
+  notarization, and they install on Linuxbrew too. This is what trivy, syft, and
+  cosign ship.
+
+### Fixed
+
+- `ordeal --version` reports the module version for `go install` builds (via
+  build info), not `dev`.
+
+## [0.1.0] - 2026-08-17
+
+First public release.
+
 ### Added
 
 - Linux and macOS mutator families (28 -> 41 evasions). Nine `-c`-payload-aware
@@ -63,11 +79,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   left byte-for-byte intact), which previously produced evasions that would not
   actually execute.
 
-## [0.1.0] — first public release (pending)
+### Summary
 
-The first tagged release will publish everything above. Ordeal asserts that a
-Sigma rule fires on the events it should, then attacks the rule with known
-evasions and reports what slips past.
+Ordeal asserts that a Sigma rule fires on the events it should, then attacks the
+rule with known evasions and reports what slips past.
 
 ### Added
 
